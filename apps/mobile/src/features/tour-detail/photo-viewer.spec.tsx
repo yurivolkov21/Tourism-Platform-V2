@@ -4,8 +4,8 @@ import { renderWithTheme } from '@/test-utils';
 import { mediaCreditText, PhotoViewer, pageIndexFromOffset, photoDisplayUrl } from './photo-viewer';
 
 describe('mediaCreditText', () => {
-  it('cả hai có: nối bằng " · "', () => {
-    expect(mediaCreditText('Nguyễn Minh', 'CC BY-SA 4.0')).toBe('Nguyễn Minh · CC BY-SA 4.0');
+  it('cả hai có: "Tác giả (giấy phép)"', () => {
+    expect(mediaCreditText('Nguyễn Minh', 'CC BY-SA 4.0')).toBe('Nguyễn Minh (CC BY-SA 4.0)');
   });
 
   it('chỉ có author: chỉ in author', () => {
@@ -65,7 +65,7 @@ describe('pageIndexFromOffset', () => {
 
 describe('PhotoViewer', () => {
   const PHOTOS = [
-    { url: 'https://x/1.jpg', alt: 'Ảnh 1', creditLine: 'Photo: Nguyễn Minh · CC BY-SA 4.0' },
+    { url: 'https://x/1.jpg', alt: 'Ảnh 1', creditLine: 'Photo: Nguyễn Minh (CC BY-SA 4.0)' },
     { url: 'https://x/2.jpg', alt: 'Ảnh 2', creditLine: null },
     { url: 'https://x/3.jpg', alt: null, creditLine: null },
   ];
@@ -85,7 +85,7 @@ describe('PhotoViewer', () => {
 
     expect(screen.getByText('1 / 3')).toBeTruthy();
     expect(screen.getByText('Ảnh 1')).toBeTruthy();
-    expect(screen.getByText('Photo: Nguyễn Minh · CC BY-SA 4.0')).toBeTruthy();
+    expect(screen.getByText('Photo: Nguyễn Minh (CC BY-SA 4.0)')).toBeTruthy();
   });
 
   it('ảnh không có ghi công/alt: không vẽ dòng nào cho phần thiếu', async () => {

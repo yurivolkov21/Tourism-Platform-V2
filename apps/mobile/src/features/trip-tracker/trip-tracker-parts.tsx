@@ -1,4 +1,11 @@
-import { AppText, AuroraGradient, type FeatherIconName, Icon, useTheme } from '@tourism/mobile-ui';
+import {
+  AppText,
+  AuroraGradient,
+  type FeatherIconName,
+  Icon,
+  TopoPattern,
+  useTheme,
+} from '@tourism/mobile-ui';
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
@@ -48,6 +55,8 @@ export function TripCountCard({
       }}
     >
       {glow === undefined ? null : <AuroraGradient intensity={glow} />}
+      {/* Vân đồng mức như hero web (đợt style 01/11) — nằm trên màu giao thoa, dưới chữ. */}
+      <TopoPattern opacity={0.07} />
       {children}
     </View>
   );

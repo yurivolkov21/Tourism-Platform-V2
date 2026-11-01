@@ -84,7 +84,7 @@ describe('tripEndedView — P6 chuyến đã về', () => {
     expect(on.writeReview).toHaveBeenCalledTimes(1);
     expect(view.bookingDetailsRow).toMatchObject({
       label: t.bookingDetailsRow,
-      caption: `BK-TEST0001 · ${t.paidAmount('$35')}`,
+      caption: `BK-TEST0001, ${t.paidAmount('$35')}`,
     });
     view.bookingDetailsRow.onPress();
     expect(on.openBooking).toHaveBeenCalledTimes(1);
@@ -141,7 +141,7 @@ describe('tripDayView — P5 đang đi', () => {
     expect(on.openItinerary).toHaveBeenCalledTimes(1);
     view.tripNotesRow.onPress();
     expect(on.openNotes).toHaveBeenCalledTimes(1);
-    expect(view.bookingDetailsRow.caption).toBe(`BK-TEST0001 · ${trips.travellersCount(2)}`);
+    expect(view.bookingDetailsRow.caption).toBe(`BK-TEST0001, ${trips.travellersCount(2)}`);
     view.bookingDetailsRow.onPress();
     expect(on.openBooking).toHaveBeenCalledTimes(1);
     expect(view.contactLabel).toBe(messages.mobile.booking.detail.contactLinkLabel);
@@ -174,7 +174,7 @@ describe('tripUpcomingView — P1 còn hơn ba ngày', () => {
 
     expect(view.countdownLabel).toBe(t.departingIn);
     expect(view.countdownValue).toBe(t.daysCount(7));
-    expect(view.subtitle).toBe(`Sat 17 – Mon 19 Oct · ${trips.travellersCount(2)}`);
+    expect(view.subtitle).toBe(`Sat 17 – Mon 19 Oct, ${trips.travellersCount(2)}`);
     expect(view.progressPercent).toBe(56);
     expect(view.bottomBarLabel).toBe(t.bookingDetailsRow);
     view.onBottomBarPress();
@@ -214,13 +214,13 @@ describe('tripUpcomingView — P1 còn hơn ba ngày', () => {
         state: 'done',
         icon: 'check',
         title: t.milestoneBookingConfirmed,
-        caption: '1 Oct 2026 · BK-TEST0001',
+        caption: '1 Oct 2026, BK-TEST0001',
       },
       {
         state: 'done',
         icon: 'check',
         title: t.milestonePaidInFull,
-        caption: `1 Oct 2026 · $35 · ${messages.mobile.booking.providerStripe}`,
+        caption: `1 Oct 2026, $35 by ${messages.mobile.booking.providerStripe}`,
       },
       {
         state: 'now',
@@ -231,7 +231,7 @@ describe('tripUpcomingView — P1 còn hơn ba ngày', () => {
       {
         state: 'upcoming',
         icon: 'flag',
-        title: `${t.milestoneDeparture} · Sat 17 Oct`,
+        title: `${t.milestoneDeparture}: Sat 17 Oct`,
         caption: 'Hanoi Opera House',
       },
     ]);
@@ -255,7 +255,7 @@ describe('tripUpcomingView — P1 còn hơn ba ngày', () => {
     );
     const milestones = view.upcoming?.milestones ?? [];
     expect(milestones[1]?.caption).toBe(
-      `1 Oct 2026 · $35 · ${messages.mobile.booking.providerPayPal}`,
+      `1 Oct 2026, $35 by ${messages.mobile.booking.providerPayPal}`,
     );
     expect(milestones[2]).toEqual({
       state: 'upcoming',
@@ -271,7 +271,7 @@ describe('tripUpcomingView — P1 còn hơn ba ngày', () => {
     expect(view.upcoming?.milestones.map((m) => m.title)).toEqual([
       t.milestoneBookingConfirmed,
       t.milestonePaidInFull,
-      `${t.milestoneDeparture} · Sat 17 Oct`,
+      `${t.milestoneDeparture}: Sat 17 Oct`,
     ]);
   });
 });

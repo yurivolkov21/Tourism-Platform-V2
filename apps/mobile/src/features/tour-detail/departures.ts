@@ -53,9 +53,11 @@ export function formatDepartureDate(date: string): string {
 
 /**
  * "Wed 23 – Sat 26 Sep" — chỉ in tháng ở ngày đầu nếu KHÁC tháng ngày cuối
- * (đợt hiếm khi vắt qua tháng, nhưng vẫn phải đọc đúng khi nó xảy ra).
+ * (đợt hiếm khi vắt qua tháng, nhưng vẫn phải đọc đúng khi nó xảy ra). Cùng ngày thì in một ngày.
  */
 export function formatDepartureRange(startDate: string, endDate: string): string {
+  // Tour trong ngày: "Wed 4 Nov", không lặp thành "Wed 4 – Wed 4 Nov" (rà 01/11, A2).
+  if (startDate === endDate) return formatDepartureDate(startDate);
   const s = dateParts(startDate);
   const e = dateParts(endDate);
   const startLabel = s.m === e.m ? `${s.dow} ${s.d}` : `${s.dow} ${s.d} ${MONTHS_SHORT[s.m - 1]}`;

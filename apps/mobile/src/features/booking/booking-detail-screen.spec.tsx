@@ -67,7 +67,7 @@ describe('BookingDetailScreen', () => {
             tone: 'warning',
             icon: 'alert-circle',
             title: 'Payment not finished',
-            body: 'Your seats are held until you pay. Finish now to confirm them.',
+            body: 'Seats aren’t held until you pay. Finish now to secure your place.',
           },
           rows: [
             { label: 'Booking code', value: 'BK-9TR2WK5C' },

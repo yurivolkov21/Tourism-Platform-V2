@@ -25,6 +25,7 @@ import { AUTH_PHOTOS } from './auth-media';
 import { fromMockup } from './auth-metrics';
 import { firstInvalidField } from './first-invalid-field';
 import { OrDivider } from './or-divider';
+import { NewPasswordField } from './password-hints';
 import { REGISTER_FIELDS } from './register-flow';
 
 export type RegisterField = (typeof REGISTER_FIELDS)[number];
@@ -87,7 +88,7 @@ export function RegisterScreen({
   }, [fieldErrors]);
 
   return (
-    <Screen edges={SCREEN_EDGES_UNDER_HEADER} padded={false}>
+    <Screen topo edges={SCREEN_EDGES_UNDER_HEADER} padded={false}>
       <AuthHero
         image={AUTH_PHOTOS.register}
         place={copy.photoPlace}
@@ -134,7 +135,7 @@ export function RegisterScreen({
           />
         </FadeIn>
         <FadeIn index={2}>
-          <TextField
+          <NewPasswordField
             ref={passwordRef}
             label={messages.mobile.auth.signIn.password}
             icon="lock"

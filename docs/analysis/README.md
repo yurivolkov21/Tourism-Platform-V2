@@ -9,6 +9,7 @@ nợ kỹ thuật, mỗi file là ảnh chụp tại một thời điểm: đọ
 | Tài liệu | Nội dung |
 | --- | --- |
 | [Sổ nợ kỹ thuật](2026-08-06-backlog-no-ky-thuat.md) | Việc kỹ thuật còn nợ, vẫn được cập nhật. Đọc trước khi mở một cụm việc mới |
+| [Rà UI/UX app mobile 01/11/2026](2026-11-01-mobile-ui-ux-audit.md) | 7 lỗi đã sửa trên nhánh `fix/ui-ux` và 1 phát hiện còn mở, đi qua trên máy thật |
 | [Rà bảo mật web 05/09/2026](2026-09-05-web-security-audit.md) | Khoảng 55 phát hiện, chia thành 8 cụm nhìn từ phía kẻ tấn công. Đọc trước mỗi đợt vá web |
 | [Rà soát độc lập toàn API 21/07/2026](2026-07-21-independent-review.md) | 4 lỗi nặng, nhóm lỗi mức vừa và 19 bất biến được canh |
 | [Hệ màu: nguồn gốc và số đo](2026-07-22-color-system-analysis.md) | Màu lấy từ đâu, đo thế nào, ba bảng màu theo vùng. Luật còn hiệu lực nằm ở [quy ước hệ màu](../conventions/color-system.md) |

@@ -22,6 +22,10 @@ describe('formatDepartureRange', () => {
   it('khác tháng: in tháng ở CẢ hai đầu', () => {
     expect(formatDepartureRange('2026-09-29', '2026-10-02')).toBe('Tue 29 Sep – Fri 2 Oct');
   });
+
+  it('tour trong ngày: in một ngày, không lặp', () => {
+    expect(formatDepartureRange('2026-11-04', '2026-11-04')).toBe('Wed 4 Nov');
+  });
 });
 
 describe('formatDepartureMonth', () => {

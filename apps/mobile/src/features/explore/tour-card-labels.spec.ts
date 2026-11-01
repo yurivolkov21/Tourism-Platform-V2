@@ -1,6 +1,6 @@
 import { messages } from '@tourism/i18n';
 import { formatDepartureDate } from '@/features/tour-detail/departures';
-import { tourCardLabels } from './tour-card-labels';
+import { discountPercent, tourCardLabels } from './tour-card-labels';
 
 const t = messages.mobile.tourDetail;
 
@@ -15,6 +15,7 @@ describe('tourCardLabels', () => {
 
     expect(labels.priceLabel).toBe('$80');
     expect(labels.compareAtPriceLabel).toBe('$100');
+    expect(labels.discountLabel).toBe('−20%');
   });
 
   it('không hạ giá: không gạch giá nào', () => {
@@ -27,6 +28,7 @@ describe('tourCardLabels', () => {
 
     expect(labels.priceLabel).toBe('$100');
     expect(labels.compareAtPriceLabel).toBeNull();
+    expect(labels.discountLabel).toBeNull();
   });
 
   it('có đợt kế: dòng ngày đi và số chỗ, còn nhiều chỗ thì không "gần đầy"', () => {
@@ -64,5 +66,12 @@ describe('tourCardLabels', () => {
     expect(labels.departureLabel).toBe(messages.mobile.explore.datesOnRequest);
     expect(labels.seatsLabel).toBeNull();
     expect(labels.almostFull).toBe(false);
+  });
+});
+
+describe('discountPercent', () => {
+  it('tính trên xu nguyên, làm tròn xuống — $35 → $28.35 là 19%, không phải 18%', () => {
+    expect(discountPercent('35.00', '28.35')).toBe(19);
+    expect(discountPercent('199.00', '169.00')).toBe(15);
   });
 });

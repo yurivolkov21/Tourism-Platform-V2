@@ -16,6 +16,7 @@ import { useMyReviews } from '@/features/reviews/use-my-reviews';
 import { formatDepartureRange } from '@/features/tour-detail/departures';
 import { orpc, withMobileAuth } from '@/lib/api/client';
 import { cloudinaryUrl } from '@/lib/cloudinary-url';
+import { repeatedKeys } from '@/lib/repeated-keys';
 import { useServerClock } from '@/lib/use-server-clock';
 
 /** R4 + R7 — "Đánh giá của tôi" và tấm xác nhận rút bài. Route trả CẢ bài chưa duyệt. */
@@ -51,16 +52,22 @@ export default function MyReviewsRoute() {
     rejectionCount: review.rejectionCount,
     dateIso: review.createdAt,
   }));
-  const awaiting: AwaitingReviewTripVM[] = tripsAwaitingReview(
-    bookingsQuery.data?.items ?? [],
-    reviews,
-    now,
-  ).map((booking) => ({
-    code: booking.code,
-    tourTitle: booking.tourTitle,
-    dateRangeLabel: formatDepartureRange(booking.departureStartDate, booking.departureEndDate),
-    imageUrl: booking.tourImage?.url ?? null,
-  }));
+  const awaitingBookings = tripsAwaitingReview(bookingsQuery.data?.items ?? [], reviews, now);
+  // Nhiều đơn cùng tour cùng ngày thì các dòng y hệt nhau — gắn mã đơn để phân biệt (rà 01/11, A3).
+  const awaitingKey = (booking: (typeof awaitingBookings)[number]) =>
+    `${booking.tourTitle}
+${booking.departureStartDate}
+${booking.departureEndDate}`;
+  const repeatedTrips = repeatedKeys(awaitingBookings, awaitingKey);
+  const awaiting: AwaitingReviewTripVM[] = awaitingBookings.map((booking) => {
+    const range = formatDepartureRange(booking.departureStartDate, booking.departureEndDate);
+    return {
+      code: booking.code,
+      tourTitle: booking.tourTitle,
+      dateRangeLabel: repeatedTrips.has(awaitingKey(booking)) ? `${range}, ${booking.code}` : range,
+      imageUrl: booking.tourImage?.url ?? null,
+    };
+  });
 
   function closeRetract() {
     setRetractId(null);

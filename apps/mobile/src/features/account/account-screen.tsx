@@ -9,6 +9,7 @@ import {
   ListRow,
   SCREEN_EDGES_UNDER_TABS,
   Screen,
+  TopoPattern,
   useTheme,
 } from '@tourism/mobile-ui';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -91,8 +92,11 @@ export function AccountScreen({
                 padding: theme.spacing(4),
                 borderRadius: 20,
                 backgroundColor: theme.colors.card,
+                overflow: 'hidden',
               }}
             >
+              {/* Vân đồng mức nhẹ cho thẻ hồ sơ (đợt style web 01/11). */}
+              <TopoPattern variant="wide" opacity={0.12} />
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={avatarEditLabel}

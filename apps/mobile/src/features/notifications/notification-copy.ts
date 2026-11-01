@@ -1,5 +1,6 @@
 import { messages } from '@tourism/i18n';
 import type { FeatherIconName } from '@tourism/mobile-ui';
+import { repeatedKeys } from '@/lib/repeated-keys';
 import type { AppNotification, NotificationKind } from './notifications';
 
 /** Icon thay ảnh khi thông báo không có ảnh tour. */
@@ -77,4 +78,30 @@ export function describeNotification(
     icon: ICONS[notification.kind],
     unread,
   };
+}
+
+/**
+ * Cả danh sách: dòng nào trùng y hệt tiêu đề lẫn nội dung với dòng khác (nhiều đơn cùng một đợt
+ * khởi hành) thì gắn mã đơn vào cuối nội dung để khách biết dòng nào là đơn nào.
+ */
+export function describeNotifications(
+  notifications: readonly AppNotification[],
+  isUnread: (notification: AppNotification) => boolean,
+): NotificationRowVM[] {
+  const rows = notifications.map((notification) =>
+    describeNotification(notification, isUnread(notification)),
+  );
+  const repeated = repeatedKeys(
+    rows,
+    (row) => `${row.title}
+${row.body}`,
+  );
+  return rows.map((row, index) => {
+    const code = notifications[index]?.code ?? null;
+    return code !== null &&
+      repeated.has(`${row.title}
+${row.body}`)
+      ? { ...row, body: `${row.body}, ${code}` }
+      : row;
+  });
 }

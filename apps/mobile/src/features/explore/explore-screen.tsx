@@ -19,7 +19,7 @@ import {
   useTheme,
   withAlpha,
 } from '@tourism/mobile-ui';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   type FlatList,
@@ -37,13 +37,16 @@ export interface ExploreTourVM {
   slug: string;
   imageUrl: string | null;
   title: string;
-  locationLabel: string;
+  categoryLabel: string | null;
+  locationLabel: string | null;
+  durationLabel: string;
   priceLabel: string;
   compareAtPriceLabel: string | null;
   rating: number | null;
   favorited: boolean;
   /** B2 — badge biên tập đầu tiên, đã dịch. */
   badgeLabel?: string | null;
+  discountLabel?: string | null;
   /** B2 — "Next departure: Nov 3" hoặc "Dates on request". */
   departureLabel?: string | null;
   seatsLabel?: string | null;
@@ -166,6 +169,25 @@ export function ExploreScreen({
   const [readMoreOpen, setReadMoreOpen] = useState(false);
   // Vị trí cuộn của danh sách tour — nuôi parallax ảnh thẻ (native driver).
   const scrollY = useRef(new Animated.Value(0)).current;
+  // Hàng chip danh mục cuộn ngang: chip đang chọn có thể nằm khuất bên phải (vd vào từ chip
+  // "Trekking & Adventure" ở chi tiết tour, rà 01/11) — tự cuộn tới khi nó chưa nằm trọn trong khung.
+  const chipRowRef = useRef<ScrollView>(null);
+  const chipRowWidth = useRef(0);
+  const chipRowOffset = useRef(0);
+  const chipFrames = useRef(new Map<string, { x: number; width: number }>());
+  const revealChip = (slug: string) => {
+    const frame = chipFrames.current.get(slug);
+    if (frame === undefined || chipRowWidth.current === 0) return;
+    const edge = theme.spacing(4);
+    const left = chipRowOffset.current;
+    const right = left + chipRowWidth.current;
+    if (frame.x >= left + edge && frame.x + frame.width <= right - edge) return;
+    chipRowRef.current?.scrollTo({ x: Math.max(0, frame.x - edge), animated: true });
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `revealChip` chỉ đọc ref, đổi mỗi lần vẽ
+  useEffect(() => {
+    if (selectedCategory !== null) revealChip(selectedCategory);
+  }, [selectedCategory]);
   const windowHeight = useWindowDimensions().height;
   // Bề rộng thẻ = màn − đệm hai bên (spacing(4) mỗi bên, y hệt padding của
   // ScrollView chứa nó) — trước đây là một số dp cứng, lệch với máy thật khác
@@ -178,7 +200,15 @@ export function ExploreScreen({
   const searchHasNoResults = searching && searchDestinations.length === 0 && tours.length === 0;
 
   return (
-    <Screen edges={SCREEN_EDGES_UNDER_TABS} padded={false} scrollable={false}>
+    <Screen
+      topo={
+        status === 'error' ||
+        (status !== 'loading' && (searchHasNoResults || (!searching && tours.length === 0)))
+      }
+      edges={SCREEN_EDGES_UNDER_TABS}
+      padded={false}
+      scrollable={false}
+    >
       <View style={{ flex: 1, gap: theme.spacing(4) }}>
         <Presence
           show={wishlistErrorLabel !== null}
@@ -247,8 +277,16 @@ export function ExploreScreen({
         {!searching && (status !== 'content' || tours.length > 0) ? (
           destinationHeader === null ? (
             <ScrollView
+              ref={chipRowRef}
               horizontal
               showsHorizontalScrollIndicator={false}
+              scrollEventThrottle={16}
+              onScroll={(event) => {
+                chipRowOffset.current = event.nativeEvent.contentOffset.x;
+              }}
+              onLayout={(event) => {
+                chipRowWidth.current = event.nativeEvent.layout.width;
+              }}
               // `flexGrow`/`flexShrink: 0`: hàng chip đứng giữa header và thân
               // màn trong một flex column — thiếu hai dòng này, cột cha có thể
               // ép chiều cao ScrollView theo layout còn lại thay vì theo đúng
@@ -265,12 +303,21 @@ export function ExploreScreen({
                 onPress={() => onSelectCategory(null)}
               />
               {categories.map((category) => (
-                <Chip
+                <View
                   key={category.slug}
-                  label={category.name}
-                  variant={selectedCategory === category.slug ? 'selected' : 'default'}
-                  onPress={() => onSelectCategory(category.slug)}
-                />
+                  onLayout={(event) => {
+                    const { x, width } = event.nativeEvent.layout;
+                    chipFrames.current.set(category.slug, { x, width });
+                    // Lần đầu dựng hàng chip (vào Explore đã kèm danh mục): đo xong mới cuộn được.
+                    if (category.slug === selectedCategory) revealChip(category.slug);
+                  }}
+                >
+                  <Chip
+                    label={category.name}
+                    variant={selectedCategory === category.slug ? 'selected' : 'default'}
+                    onPress={() => onSelectCategory(category.slug)}
+                  />
+                </View>
               ))}
             </ScrollView>
           ) : (
@@ -335,7 +382,10 @@ export function ExploreScreen({
                 slug: tour.slug,
                 imageUrl: tour.imageUrl,
                 title: tour.title,
-                locationLabel: `${tour.locationLabel} · ${fromLabel} ${tour.priceLabel}`,
+                locationLabel: [tour.locationLabel, tour.durationLabel]
+                  .filter((part) => part !== null)
+                  .join(', '),
+                priceLabel: `${fromLabel} ${tour.priceLabel}`,
               }))}
               onDestinationPress={onSelectDestination}
               onTourPress={onTourPress}
@@ -390,12 +440,15 @@ export function ExploreScreen({
                       imageUrl={tour.imageUrl}
                       imageAlt={tour.title}
                       title={tour.title}
+                      categoryLabel={tour.categoryLabel}
                       locationLabel={tour.locationLabel}
+                      durationLabel={tour.durationLabel}
                       fromLabel={fromLabel}
                       priceLabel={tour.priceLabel}
                       compareAtPriceLabel={tour.compareAtPriceLabel}
                       rating={tour.rating}
                       badgeLabel={tour.badgeLabel}
+                      discountLabel={tour.discountLabel}
                       departureLabel={tour.departureLabel}
                       seatsLabel={tour.seatsLabel}
                       almostFull={tour.almostFull}

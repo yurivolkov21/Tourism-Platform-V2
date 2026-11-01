@@ -144,7 +144,7 @@ function TripsRoute() {
           subLabel: `${formatDepartureRange(
             nextBooking.booking.departureStartDate,
             nextBooking.booking.departureEndDate,
-          )} · ${trips.travellersCount(
+          )}, ${trips.travellersCount(
             nextBooking.booking.numAdults + nextBooking.booking.numChildren,
           )}`,
           ctaLabel: trips.viewTrip,

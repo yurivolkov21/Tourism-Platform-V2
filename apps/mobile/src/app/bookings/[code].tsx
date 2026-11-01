@@ -145,7 +145,7 @@ export default function BookingDetailRoute() {
     return (
       <>
         {titleScreen}
-        <Screen edges={SCREEN_EDGES_UNDER_HEADER} padded={false}>
+        <Screen topo edges={SCREEN_EDGES_UNDER_HEADER} padded={false}>
           <View style={{ flex: 1, justifyContent: 'center', padding: 24 }}>
             <EmptyState
               icon={null}

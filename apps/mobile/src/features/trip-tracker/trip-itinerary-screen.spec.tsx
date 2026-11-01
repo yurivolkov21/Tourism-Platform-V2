@@ -4,7 +4,7 @@ import { TripItineraryScreen, type TripItineraryScreenProps } from './trip-itine
 
 function baseProps(overrides: Partial<TripItineraryScreenProps> = {}): TripItineraryScreenProps {
   return {
-    summaryLabel: '4 days · Đà Nẵng → Hội An → Huế',
+    summaryLabel: '4 days, Đà Nẵng → Hội An → Huế',
     days: [
       {
         dayNumber: 1,
@@ -28,7 +28,7 @@ describe('TripItineraryScreen', () => {
   it('vẽ tóm tắt và tiêu đề mỗi ngày kèm ngày lịch', async () => {
     await renderWithTheme(<TripItineraryScreen {...baseProps()} />);
 
-    expect(screen.getByText('4 days · Đà Nẵng → Hội An → Huế')).toBeTruthy();
+    expect(screen.getByText('4 days, Đà Nẵng → Hội An → Huế')).toBeTruthy();
     expect(screen.getByText('Arrival in Đà Nẵng')).toBeTruthy();
     expect(screen.getByText('Sat 3 Oct')).toBeTruthy();
     expect(screen.getByText('A full day in Hội An')).toBeTruthy();

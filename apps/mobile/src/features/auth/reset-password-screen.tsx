@@ -12,6 +12,7 @@ import { useEffect, useRef } from 'react';
 import { type TextInput, View } from 'react-native';
 import { firstInvalidField } from './first-invalid-field';
 import { InfoState } from './info-state';
+import { ConfirmMatchHint, NewPasswordField } from './password-hints';
 import { RESET_PASSWORD_FIELDS } from './reset-password-flow';
 
 export type ResetPasswordField = (typeof RESET_PASSWORD_FIELDS)[number];
@@ -96,7 +97,7 @@ export function ResetPasswordScreen({
           {copy.body}
         </AppText>
 
-        <TextField
+        <NewPasswordField
           ref={passwordRef}
           label={copy.newPassword}
           icon="lock"
@@ -123,6 +124,11 @@ export function ResetPasswordScreen({
           autoCapitalize="none"
           autoComplete="new-password"
           textContentType="newPassword"
+        />
+        <ConfirmMatchHint
+          password={values.password}
+          confirm={values.confirm}
+          error={fieldErrors.confirm}
         />
 
         <View style={{ marginTop: 'auto', paddingTop: theme.spacing(6) }}>

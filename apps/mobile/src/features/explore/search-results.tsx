@@ -13,8 +13,10 @@ export interface SearchResultTour {
   slug: string;
   imageUrl: string | null;
   title: string;
-  /** "Hà Giang · 4 days · From $329" — ghép sẵn ở route. */
+  /** "Hà Giang, 4 days" — ghép sẵn ở route. */
   locationLabel: string;
+  /** "From $329" — đứng riêng mép phải, không nối vào dòng địa danh bằng " · " (user 01/11). */
+  priceLabel: string;
 }
 
 export interface SearchResultsProps {
@@ -188,6 +190,7 @@ function ResultRow({
           {tour.locationLabel}
         </AppText>
       </View>
+      <AppText variant="label">{tour.priceLabel}</AppText>
     </Pressable>
   );
 }

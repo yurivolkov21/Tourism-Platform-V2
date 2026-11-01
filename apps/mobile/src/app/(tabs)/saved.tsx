@@ -112,13 +112,10 @@ function SavedRoute() {
       slug: item.slug,
       imageUrl: item.cover?.url ?? null,
       title: item.title,
-      // Cùng khuôn ExploreScreen ("Hội An · 1 day") — `destinationName` null
-      // (tour chưa gắn địa danh, không nên xảy ra ở dữ liệu thật) rơi về chỉ
-      // số ngày, không in dấu `·` treo.
-      locationLabel:
-        item.destinationName === null
-          ? messages.mobile.home.durationDays(item.durationDays)
-          : `${item.destinationName} · ${messages.mobile.home.durationDays(item.durationDays)}`,
+      // Cùng khuôn ExploreScreen: địa danh và thời lượng là hai mục icon riêng; `destinationName`
+      // null (tour chưa gắn địa danh) thì thẻ chỉ in thời lượng.
+      locationLabel: item.destinationName,
+      durationLabel: messages.mobile.home.durationDays(item.durationDays),
       // Giá "from", giá gạch và dòng đợt như thẻ Explore (review M2-14). Thẻ tự bỏ dòng đợt khi
       // tour đã gỡ.
       ...tourCardLabels(item),

@@ -82,7 +82,12 @@ export function HomeScreen({
   }, [selectedRegion]);
 
   return (
-    <Screen edges={SCREEN_EDGES_UNDER_TABS} padded={false} scrollable={false}>
+    <Screen
+      topo={status === 'error'}
+      edges={SCREEN_EDGES_UNDER_TABS}
+      padded={false}
+      scrollable={false}
+    >
       <View style={{ flex: 1, paddingTop: theme.spacing(3), gap: theme.spacing(5) }}>
         {/* Header: ô avatar + "Welcome / Traveller" (v1 `HomeHeader`). */}
         <View

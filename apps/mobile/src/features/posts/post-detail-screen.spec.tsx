@@ -11,7 +11,7 @@ function tour(overrides: Partial<RelatedTourVM> = {}): RelatedTourVM {
     slug: 'sapa-terraces-homestay-2d',
     title: 'Sa Pa Terraces & Homestay Trek 2D1N',
     imageUrl: 'https://res.cloudinary.com/demo/image/upload/sapa/hero',
-    durationLabel: '2 days · Moderate',
+    durationLabel: '2 days, Moderate',
     priceLabel: '$119',
     ...overrides,
   };

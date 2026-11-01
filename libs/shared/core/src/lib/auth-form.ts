@@ -49,6 +49,20 @@ function newPasswordError(
   return password.length < 8 ? copy.tooShort : copy.tooLong;
 }
 
+/**
+ * Năm yêu cầu của checklist độ mạnh mật khẩu (web `password-strength-field.tsx`, mobile
+ * `password-hints.tsx`). CHỈ là chỉ báo UX — ràng buộc thật khi submit vẫn là 8–128 ký tự ở
+ * `newPasswordError`. `short` là nhãn pill, `text` là câu đầy đủ cho trình đọc màn hình.
+ */
+const strength = messages.authForms.passwordStrength.requirements;
+export const PASSWORD_REQUIREMENTS = [
+  { regex: /.{8,}/, ...strength.length },
+  { regex: /[a-z]/, ...strength.lowercase },
+  { regex: /[A-Z]/, ...strength.uppercase },
+  { regex: /[0-9]/, ...strength.number },
+  { regex: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/, ...strength.symbol },
+] as const;
+
 function confirmError(password: string, confirm: string): string | undefined {
   if (confirm.length === 0) return t.confirmPassword.required;
   return confirm === password ? undefined : t.confirmPassword.mismatch;
@@ -126,9 +140,13 @@ export function validateChangePassword(fields: {
   newPassword: string;
   confirmPassword: string;
 }): ChangePasswordErrors {
+  const sameAsCurrent =
+    fields.newPassword.length > 0 && fields.newPassword === fields.currentPassword;
   return compact({
     currentPassword: requiredOnly(fields.currentPassword, t.currentPassword.required),
-    newPassword: newPasswordError(fields.newPassword, t.newPassword),
+    newPassword: sameAsCurrent
+      ? t.newPassword.sameAsCurrent
+      : newPasswordError(fields.newPassword, t.newPassword),
     confirmPassword: confirmError(fields.newPassword, fields.confirmPassword),
   });
 }

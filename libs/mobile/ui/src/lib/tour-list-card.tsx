@@ -5,6 +5,7 @@ import { AppImage } from './app-image';
 import { AppText } from './app-text';
 import { Icon } from './icon';
 import { type CardParallax, PressableScale, useMotionScale } from './motion';
+import type { FeatherIconName } from './text-field';
 import { withAlpha } from './theme';
 import { useTheme } from './theme-provider';
 
@@ -12,8 +13,12 @@ export interface TourListCardProps {
   imageUrl: string | null;
   imageAlt: string;
   title: string;
-  /** "Hội An · 1 day" — địa danh chính + thời lượng, đã ghép sẵn. */
-  locationLabel: string;
+  /** Danh mục ("Trekking & Adventure") — dòng chữ nhỏ viết hoa trên tên, như web; bỏ trống = ẩn. */
+  categoryLabel?: string | null;
+  /** Địa danh chính; `null` (tour chưa gắn địa danh) = chỉ còn thời lượng. */
+  locationLabel: string | null;
+  /** "1 day" — đã dịch sẵn. */
+  durationLabel: string;
   /** `explore.` nhãn "From" đứng trước giá — mảng chữ tĩnh, truyền vào để
       card không phụ thuộc `@tourism/i18n` (ranh giới package, ADR-0040 §2). */
   fromLabel: string;
@@ -24,6 +29,8 @@ export interface TourListCardProps {
   rating: number | null;
   /** Nhãn biên tập đầu tiên (`badges[0]`), đã dịch sẵn; tối đa MỘT badge trên ảnh. */
   badgeLabel?: string | null;
+  /** "−15%" — chip giảm giá màu nhấn đứng trước badge (như chip `discount` của thẻ web). */
+  discountLabel?: string | null;
   /** "Next departure: Nov 3" hoặc "Dates on request"; `null`/bỏ trống = ẩn dòng đợt. */
   departureLabel?: string | null;
   /** "8 seats left" — đứng cuối dòng đợt. */
@@ -58,12 +65,15 @@ export function TourListCard({
   imageUrl,
   imageAlt,
   title,
+  categoryLabel = null,
   locationLabel,
+  durationLabel,
   fromLabel,
   priceLabel,
   compareAtPriceLabel,
   rating,
   badgeLabel = null,
+  discountLabel = null,
   departureLabel = null,
   seatsLabel = null,
   almostFull = false,
@@ -213,6 +223,22 @@ export function TourListCard({
                   </AppText>
                 </View>
               )}
+              {discountLabel === null ? null : (
+                <View
+                  testID="tour-list-card-discount"
+                  style={[chipStyle, { backgroundColor: theme.colors.primary }]}
+                >
+                  <AppText
+                    variant="caption"
+                    style={{
+                      color: theme.colors['primary-foreground'],
+                      fontWeight: theme.weight.semibold,
+                    }}
+                  >
+                    {discountLabel}
+                  </AppText>
+                </View>
+              )}
               {badgeLabel === null ? null : (
                 <View testID="tour-list-card-badge" style={chipStyle}>
                   <AppText
@@ -276,10 +302,27 @@ export function TourListCard({
       </View>
 
       <View style={{ gap: 2 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing(3) }}>
-          <AppText variant="heading" numberOfLines={1} style={{ flex: 1 }}>
-            {title}
-          </AppText>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: theme.spacing(3) }}>
+          <View style={{ flex: 1 }}>
+            {categoryLabel === null ? null : (
+              <AppText
+                testID="tour-list-card-category"
+                variant="caption"
+                numberOfLines={1}
+                style={{
+                  color: theme.colors['primary-emphasis'],
+                  fontWeight: theme.weight.semibold,
+                  letterSpacing: 0.8,
+                  textTransform: 'uppercase',
+                }}
+              >
+                {categoryLabel}
+              </AppText>
+            )}
+            <AppText variant="heading" numberOfLines={1}>
+              {title}
+            </AppText>
+          </View>
           <View style={{ alignItems: 'flex-end' }}>
             {compareAtPriceLabel === null ? (
               <AppText variant="caption" tone="muted">
@@ -297,35 +340,61 @@ export function TourListCard({
             <AppText variant="heading">{priceLabel}</AppText>
           </View>
         </View>
-        <AppText variant="label" tone="muted" style={{ fontWeight: theme.weight.normal }}>
-          {locationLabel}
-        </AppText>
+        {/* Thông tin phụ: mỗi mục một icon, cách nhau bằng khoảng trắng — không nối bằng " · "
+            (user 01/11: dấu chấm giữa nhìn "kiểu AI"). */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: theme.spacing(4) }}>
+          {locationLabel === null ? null : <CardMeta icon="map-pin" label={locationLabel} />}
+          <CardMeta icon="clock" label={durationLabel} />
+        </View>
         {unavailable || departureLabel === null ? null : (
           <View
             testID="tour-list-card-departure"
-            style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing(1.5) }}
+            style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: theme.spacing(4) }}
           >
-            <Icon name="calendar" size={14} color={theme.colors['muted-foreground']} />
-            <AppText variant="caption" tone="muted">
-              {departureLabel}
-            </AppText>
+            <CardMeta icon="calendar" label={departureLabel} />
             {seatsLabel === null ? null : (
-              <AppText
+              <CardMeta
                 testID="tour-list-card-seats"
-                variant="caption"
-                style={{
-                  color: almostFull
-                    ? theme.colors['warning-emphasis']
-                    : theme.colors['muted-foreground'],
-                  fontWeight: theme.weight.medium,
-                }}
-              >
-                {`· ${seatsLabel}`}
-              </AppText>
+                icon="users"
+                label={seatsLabel}
+                color={almostFull ? theme.colors['warning-emphasis'] : undefined}
+                emphasis
+              />
             )}
           </View>
         )}
       </View>
     </PressableScale>
+  );
+}
+
+/** Một mục thông tin phụ của thẻ: icon nhỏ + chữ. */
+function CardMeta({
+  icon,
+  label,
+  color,
+  emphasis = false,
+  testID,
+}: {
+  icon: FeatherIconName;
+  label: string;
+  /** Mặc định `muted-foreground`; số chỗ sắp kín truyền màu cảnh báo. */
+  color?: string;
+  emphasis?: boolean;
+  testID?: string;
+}) {
+  const theme = useTheme();
+  const tint = color ?? theme.colors['muted-foreground'];
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing(1.5) }}>
+      <Icon name={icon} size={14} color={tint} />
+      <AppText
+        testID={testID}
+        variant="caption"
+        style={{ color: tint, fontWeight: emphasis ? theme.weight.medium : theme.weight.normal }}
+      >
+        {label}
+      </AppText>
+    </View>
   );
 }

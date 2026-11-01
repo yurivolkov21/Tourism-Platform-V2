@@ -1,12 +1,20 @@
-import { destinationFromEntryParams, exploreEntryParams } from './explore-entry';
+import {
+  categoryFromEntryParams,
+  destinationFromEntryParams,
+  exploreEntryParams,
+} from './explore-entry';
 
 describe('exploreEntryParams (F5)', () => {
   it('có điểm đến: gửi slug kèm nonce', () => {
-    expect(exploreEntryParams('hoi-an', '1')).toEqual({ destination: 'hoi-an', nav: '1' });
+    expect(exploreEntryParams('hoi-an', '1')).toEqual({
+      destination: 'hoi-an',
+      category: '',
+      nav: '1',
+    });
   });
 
   it('"See all tours" (null): gửi destination rỗng để BỎ lọc cũ', () => {
-    expect(exploreEntryParams(null, '2')).toEqual({ destination: '', nav: '2' });
+    expect(exploreEntryParams(null, '2')).toEqual({ destination: '', category: '', nav: '2' });
   });
 });
 
@@ -26,5 +34,18 @@ describe('destinationFromEntryParams (F5)', () => {
   it('khứ hồi với exploreEntryParams', () => {
     expect(destinationFromEntryParams(exploreEntryParams(null, '3'))).toBeNull();
     expect(destinationFromEntryParams(exploreEntryParams('da-lat', '4'))).toBe('da-lat');
+  });
+});
+
+describe('categoryFromEntryParams', () => {
+  it('chip danh mục ở chi tiết tour: lọc đúng danh mục, bỏ lọc điểm đến', () => {
+    const params = exploreEntryParams(null, '4', 'trekking');
+    expect(categoryFromEntryParams(params)).toBe('trekking');
+    expect(destinationFromEntryParams(params)).toBeNull();
+  });
+
+  it('vào từ Home thì bỏ lọc danh mục cũ; vào bằng thanh tab thì giữ', () => {
+    expect(categoryFromEntryParams(exploreEntryParams('hoi-an', '5'))).toBeNull();
+    expect(categoryFromEntryParams({})).toBeUndefined();
   });
 });

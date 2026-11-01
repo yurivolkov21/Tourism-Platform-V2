@@ -82,5 +82,6 @@ export type {
 export { buildTheme, MOBILE_COLOR_KEYS, MOBILE_FONTS, mixColors, withAlpha } from './lib/theme';
 export type { ThemeProviderProps } from './lib/theme-provider';
 export { ThemeProvider, useTheme } from './lib/theme-provider';
+export { TopoPattern, type TopoPatternProps } from './lib/topo-pattern';
 export type { TourListCardProps } from './lib/tour-list-card';
 export { TourListCard } from './lib/tour-list-card';

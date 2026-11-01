@@ -39,7 +39,7 @@ export default function TripItineraryRoute() {
 
   if (tourQuery.isError) {
     return (
-      <Screen edges={SCREEN_EDGES_UNDER_HEADER} padded={false}>
+      <Screen topo edges={SCREEN_EDGES_UNDER_HEADER} padded={false}>
         <View style={{ flex: 1, justifyContent: 'center', padding: 24 }}>
           <EmptyState
             icon={null}
@@ -61,7 +61,7 @@ export default function TripItineraryRoute() {
 
   return (
     <TripItineraryScreen
-      summaryLabel={`${messages.mobile.trip.daysCount(tour.durationDays)} · ${tour.destinations
+      summaryLabel={`${messages.mobile.trip.daysCount(tour.durationDays)}, ${tour.destinations
         .map((d) => d.name)
         .join(' → ')}`}
       days={tour.itinerary.map((day) => ({

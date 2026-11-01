@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, ScrollView, View, type ViewProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from './theme-provider';
+import { TopoPattern } from './topo-pattern';
 
 /** Cạnh mà MÀN tự lo vùng an toàn — cạnh nào navigator đã lo thì đừng kể vào. */
 export type ScreenEdge = 'top' | 'bottom';
@@ -44,6 +45,12 @@ export interface ScreenProps extends ViewProps {
    * (danh sách ảo hoá, bản đồ).
    */
   scrollable?: boolean;
+  /**
+   * Vân đồng mức (`TopoPattern`) phủ KÍN cả màn, dưới mọi nội dung — cho trạng thái trống/lỗi và
+   * cụm đăng nhập (đợt style web 01/11). Đặt ở khung ngoài chứ không trong khối nội dung: vân dừng
+   * lưng chừng (dưới header, giữa form) trông như bị cắt (phản hồi user 01/11).
+   */
+  topo?: boolean;
 }
 
 /**
@@ -59,6 +66,7 @@ export function Screen({
   padded = true,
   edges = ['top', 'bottom'],
   scrollable = true,
+  topo = false,
   style,
   testID,
   ...rest
@@ -78,6 +86,8 @@ export function Screen({
       edges={edges}
       style={{ flex: 1, backgroundColor: theme.colors.background }}
     >
+      {/* `absoluteFill` tính từ mép khung (gồm cả phần đệm vùng an toàn) nên phủ tới mép màn. */}
+      {topo ? <TopoPattern opacity={0.06} /> : null}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         // Cả hai nền tảng dùng `padding`: Expo SDK 57 bật edge-to-edge trên Android nên cửa

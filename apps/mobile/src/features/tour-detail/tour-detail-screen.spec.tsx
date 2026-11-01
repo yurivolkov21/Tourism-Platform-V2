@@ -44,7 +44,41 @@ function baseProps(overrides: Partial<TourDetailScreenProps> = {}): TourDetailSc
     rating: 4.3,
     reviewCountLabel: '3 reviews',
     notRatedLabel: 'New — no reviews yet',
-    destinationsLine: 'Đà Nẵng · Hội An · Huế',
+    categoryLabel: 'Trekking & Adventure',
+    categoryA11yLabel: 'See all Trekking & Adventure tours',
+    onCategoryPress: jest.fn(),
+    routeStops: ['Đà Nẵng', 'Hội An', 'Huế'],
+    trustItems: [{ icon: 'calendar', label: 'Free cancellation until 7 days before departure' }],
+    highlightsTitle: 'Highlights',
+    highlights: ['Lantern night in Hội An'],
+    goodToKnowTitle: 'Good to know',
+    goodToKnowRows: [
+      {
+        id: 'included',
+        icon: 'check-circle',
+        title: "What's included",
+        bullets: { icon: 'check', items: ['Hotel pickup'] },
+      },
+    ],
+    faqTitle: 'Questions travellers ask',
+    faqRows: [1, 2, 3, 4].map((n) => ({
+      id: `faq-${n}`,
+      icon: 'help-circle' as const,
+      title: `Question ${n}?`,
+      paragraphs: [{ text: `Answer ${n}` }],
+    })),
+    showAllFaqsLabel: (n: number) => `Show all ${n} FAQs`,
+    relatedTitle: 'You might also like',
+    relatedTours: [
+      {
+        slug: 'hue',
+        title: 'Huế in a Day',
+        imageUrl: null,
+        durationLabel: '1 day',
+        priceLabel: '$40',
+      },
+    ],
+    onRelatedPress: jest.fn(),
     summary: 'Four days over the Hải Vân Pass.',
     facts: FACTS,
     fromLabel: 'From',
@@ -167,10 +201,38 @@ describe('TourDetailScreen', () => {
     await renderWithTheme(<TourDetailScreen {...baseProps()} />);
 
     expect(screen.getByText('Central Heritage: Đà Nẵng–Hội An–Huế 4D3N')).toBeTruthy();
-    expect(screen.getByText('4.3 · 3 reviews')).toBeTruthy();
-    expect(screen.getByText('Đà Nẵng · Hội An · Huế')).toBeTruthy();
+    expect(screen.getByText('4.3 (3 reviews)')).toBeTruthy();
+    expect(screen.getByText('Đà Nẵng')).toBeTruthy();
+    expect(screen.getByText('Huế')).toBeTruthy();
     expect(screen.getByText('4 days')).toBeTruthy();
     expect(screen.getByText('$419')).toBeTruthy();
+  });
+
+  it('Overview: cam kết, điểm nổi bật, Good to know xổ ra, FAQ rút gọn, tour liên quan', async () => {
+    const onRelatedPress = jest.fn();
+    await renderWithTheme(<TourDetailScreen {...baseProps({ onRelatedPress })} />);
+
+    expect(screen.getByText('Free cancellation until 7 days before departure')).toBeTruthy();
+    expect(screen.getByText('Lantern night in Hội An')).toBeTruthy();
+    // Dòng xổ: nội dung chỉ hiện khi bấm.
+    expect(screen.queryByText('Hotel pickup')).toBeNull();
+    await fireEvent.press(screen.getByText("What's included"));
+    expect(await screen.findByText('Hotel pickup')).toBeTruthy();
+    // 4 câu hỏi: hiện 3, nút "Show all 4 FAQs" mở hết.
+    expect(screen.queryByText('Question 4?')).toBeNull();
+    await fireEvent.press(screen.getByText('Show all 4 FAQs'));
+    expect(await screen.findByText('Question 4?')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Huế in a Day'));
+    expect(onRelatedPress).toHaveBeenCalledWith('hue');
+  });
+
+  it('chip danh mục cạnh chip sao, bấm thì mở Explore lọc danh mục', async () => {
+    const onCategoryPress = jest.fn();
+    await renderWithTheme(<TourDetailScreen {...baseProps({ onCategoryPress })} />);
+
+    expect(screen.getByText('Trekking & Adventure')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('See all Trekking & Adventure tours'));
+    expect(onCategoryPress).toHaveBeenCalledTimes(1);
   });
 
   it('chưa ai đánh giá (rating null): vẽ notRatedLabel thay vì dòng sao', async () => {

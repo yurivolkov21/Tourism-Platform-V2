@@ -12,6 +12,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { consumePendingReplay, setPendingReturn } from '@/features/auth/return-to';
 import { startBookingDraft } from '@/features/booking/booking-draft';
+import { exploreEntryParams } from '@/features/explore/explore-entry';
+import { exploreToursInput } from '@/features/explore/explore-prefetch';
 import {
   type AskAboutDateErrors,
   type AskAboutDateField,
@@ -29,11 +31,13 @@ import {
   isDepartureOpen,
 } from '@/features/tour-detail/departures';
 import { parseItineraryDescription } from '@/features/tour-detail/itinerary';
+import type { GoodToKnowRow, RelatedTourVM } from '@/features/tour-detail/overview-extras';
 import {
   mediaCreditText,
   photoDisplayUrl,
   type TourDetailPhoto,
 } from '@/features/tour-detail/photo-viewer';
+import { relatedTours } from '@/features/tour-detail/related-tours';
 import { formatReviewDate, reviewAuthorInitials } from '@/features/tour-detail/reviews';
 import {
   type TourDetailDepartureGroup,
@@ -52,6 +56,10 @@ import { cloudinaryUrl } from '@/lib/cloudinary-url';
 import { formatMoney } from '@/lib/format-money';
 import { usePullToRefresh } from '@/lib/use-pull-to-refresh';
 import { isWishlistMutating, useWishlistSetMutation } from '@/lib/wishlist-mutation';
+
+/** Thứ tự nhóm chính sách — cùng `POLICY_ORDER` của web (`apps/web/src/lib/tour-detail.ts`). */
+const POLICY_ORDER = ['CANCELLATION', 'BOOKING', 'GENERAL'] as const;
+const POLICY_ICON = { CANCELLATION: 'calendar', BOOKING: 'credit-card', GENERAL: 'info' } as const;
 
 /**
  * Route chi tiết tour (D1/D7 — ADR-0055 T5). Gọi `catalog.tours.bySlug`,
@@ -101,6 +109,11 @@ export default function TourDetailRoute() {
   const queryClient = useQueryClient();
 
   const query = useQuery(orpc.catalog.tours.bySlug.queryOptions({ input: { slug } }));
+  // Tour liên quan cuối Overview: dùng CHUNG query key với Explore (`exploreToursInput()`), nên vào
+  // từ Explore là đã có cache sẵn.
+  const toursListQuery = useQuery(
+    orpc.catalog.tours.list.queryOptions({ input: exploreToursInput({}) }),
+  );
   // D4 — phân trang review bằng `useInfiniteQuery`, cùng cách N4/N5 của
   // `app/posts/index.tsx`. Sort nằm trong query key: đổi sort là sang cache
   // khác, các trang đã tải luôn thuộc đúng sort đang chọn, chọn lại sort đang
@@ -311,27 +324,104 @@ export default function TourDetailRoute() {
       icon: 'clock',
       label: tourDetail.facts.duration,
       value: messages.mobile.home.durationDays(tour.durationDays),
+      note: tour.factDurationNote,
     });
     facts.push({
       icon: 'users',
       label: tourDetail.facts.groupSize,
       value: tourDetail.maxGroup(tour.maxGroupSize),
+      note: tour.factGroupSizeNote,
     });
     if (tour.difficulty !== null) {
       facts.push({
         icon: 'activity',
         label: tourDetail.facts.difficulty,
         value: toursPage.difficultyLabels[tour.difficulty],
+        note: tour.factDifficultyNote,
       });
     }
     if (tour.suitableFor.length > 0) {
       facts.push({
         icon: 'smile',
         label: tourDetail.facts.goodFor,
-        value: tour.suitableFor.map((t) => messages.travellerTypes[t]).join(' · '),
+        value: tour.suitableFor.map((t) => messages.travellerTypes[t]).join(', '),
+        note: tour.factGoodForNote,
       });
     }
   }
+
+  // Khối web có mà Overview mobile từng thiếu (rà web → mobile 01/11). Câu huỷ sinh TỪ LUẬT
+  // (`windowDaysForTripLength`, ADR-0041) như web, KHÔNG đọc policy loại CANCELLATION: dữ liệu cũ
+  // ghi mốc khác luật mới, in cả hai là khách tin cái sai.
+  const policies =
+    tour === undefined
+      ? []
+      : [...tour.policies]
+          .filter((policy) => policy.kind !== 'CANCELLATION')
+          .sort((a, b) => POLICY_ORDER.indexOf(a.kind) - POLICY_ORDER.indexOf(b.kind));
+  const cancellationRule =
+    tour === undefined
+      ? ''
+      : messages.cancellationDeadline.rule(windowDaysForTripLength(tour.durationDays));
+  const trustItems =
+    tour === undefined
+      ? []
+      : [
+          { icon: 'calendar' as const, label: cancellationRule },
+          // Một dòng mỗi loại (như hàng `.trust` web): chính sách đầu tiên của loại.
+          ...policies
+            .filter((policy, index, all) => all.findIndex((o) => o.kind === policy.kind) === index)
+            .map((policy) => ({ icon: POLICY_ICON[policy.kind], label: policy.title })),
+        ];
+  const goodToKnowRows: GoodToKnowRow[] = [];
+  if (tour !== undefined) {
+    if (tour.included.length > 0) {
+      goodToKnowRows.push({
+        id: 'included',
+        icon: 'check-circle',
+        title: tourDetail.includedTitle,
+        bullets: { icon: 'check', items: tour.included },
+      });
+    }
+    if (tour.excluded.length > 0) {
+      goodToKnowRows.push({
+        id: 'excluded',
+        icon: 'x-circle',
+        title: tourDetail.excludedTitle,
+        bullets: { icon: 'x', items: tour.excluded },
+      });
+    }
+    goodToKnowRows.push({
+      id: 'policies',
+      icon: 'shield',
+      title: tourDetail.policiesTitle,
+      paragraphs: [
+        {
+          heading: messages.tourDetail.goodToKnow.policyKinds.CANCELLATION,
+          text: `${cancellationRule}. ${messages.cancellationDeadline.ruleAfter}`,
+        },
+        ...policies.map((policy) => ({ heading: policy.title, text: policy.body })),
+      ],
+    });
+  }
+  const faqRows: GoodToKnowRow[] =
+    tour?.faqs.map((faq, index) => ({
+      id: `faq-${index}`,
+      icon: 'help-circle',
+      title: faq.question,
+      paragraphs: [{ text: faq.answer }],
+    })) ?? [];
+  const relatedToursVM: RelatedTourVM[] = relatedTours(
+    toursListQuery.data?.items ?? [],
+    slug,
+    6,
+  ).map((item) => ({
+    slug: item.slug,
+    title: item.title,
+    imageUrl: item.cover?.url ?? null,
+    durationLabel: messages.mobile.home.durationDays(item.durationDays),
+    priceLabel: formatMoney(item.priceFrom, item.currency),
+  }));
 
   const galleryImages = tour === undefined ? [] : tourGallery(tour.media);
   // D5 — cùng bộ ảnh/thứ tự với `galleryImages`, thêm ghi công cho trình xem.
@@ -461,8 +551,40 @@ export default function TourDetailRoute() {
       // chuỗi, lệch mockup (icon tách màu vàng riêng, nối bằng "·").
       reviewCountLabel={tour === undefined ? '' : messages.tourDetail.reviewCount(tour.ratingCount)}
       notRatedLabel={messages.tourDetail.notRated}
-      destinationsLine={tour?.destinations.map((d) => d.name).join(' · ') ?? ''}
+      categoryLabel={tour?.category.name ?? null}
+      categoryA11yLabel={tour === undefined ? '' : tourDetail.categoryChipA11y(tour.category.name)}
+      // Lùi hết về bộ tab rồi chuyển sang tab Explore kèm param lọc danh mục (bỏ lọc điểm đến) và
+      // nonce mới để Explore đã mount vẫn áp lại — cùng đường Home dùng. KHÔNG dùng
+      // `dismissTo({ pathname, params })`: nó quay về tab Explore có sẵn nhưng bỏ param (đo trên máy
+      // 01/11), Explore mở ra không lọc gì.
+      onCategoryPress={() => {
+        if (tour === undefined) return;
+        router.dismissAll();
+        router.navigate({
+          pathname: '/explore',
+          params: exploreEntryParams(null, String(Date.now()), tour.category.slug),
+        });
+      }}
+      routeStops={
+        tour === undefined
+          ? []
+          : [
+              ...tour.destinations.filter((d) => d.isPrimary),
+              ...tour.destinations.filter((d) => !d.isPrimary),
+            ].map((d) => d.name)
+      }
       summary={tour?.summary ?? null}
+      trustItems={trustItems}
+      highlightsTitle={tourDetail.highlightsTitle}
+      highlights={tour?.highlights ?? []}
+      goodToKnowTitle={messages.tourDetail.tabs.goodToKnow}
+      goodToKnowRows={goodToKnowRows}
+      faqTitle={messages.tourDetail.goodToKnow.faqHeading}
+      faqRows={faqRows}
+      showAllFaqsLabel={tourDetail.showAllFaqs}
+      relatedTitle={messages.tourDetail.sections.related}
+      relatedTours={relatedToursVM}
+      onRelatedPress={(relatedSlug) => router.push(`/tours/${relatedSlug}`)}
       facts={facts}
       fromLabel={tourDetail.from}
       priceLabel={tour === undefined ? '' : formatMoney(tour.priceFrom, tour.currency)}

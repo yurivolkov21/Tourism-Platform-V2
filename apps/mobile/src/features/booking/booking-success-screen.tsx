@@ -8,6 +8,7 @@ import {
   Icon,
   PopIn,
   Screen,
+  TopoPattern,
   useTheme,
   withAlpha,
 } from '@tourism/mobile-ui';
@@ -65,7 +66,13 @@ export function BookingSuccessScreen({
         <View
           style={{ height: HERO_HEIGHT, backgroundColor: theme.colors.muted, overflow: 'hidden' }}
         >
-          {heroImageUrl === null ? <AuroraGradient intensity={0.45} /> : null}
+          {heroImageUrl === null ? (
+            <>
+              <AuroraGradient intensity={0.45} />
+              {/* Tour chưa có ảnh bìa: vân đồng mức thay cho khoảng màu trơn (đợt style web 01/11). */}
+              <TopoPattern opacity={0.1} />
+            </>
+          ) : null}
           {heroImageUrl === null ? null : (
             <>
               <AppImage source={heroImageUrl} width={780} alt="" transformUrl={transformUrl} fill />

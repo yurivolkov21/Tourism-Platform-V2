@@ -7,12 +7,14 @@ import {
   Chip,
   EmptyState,
   FadeIn,
+  type FeatherIconName,
   Icon,
   IconButton,
   PopIn,
   Pulse,
   Screen,
   Skeleton,
+  TopoPattern,
   usePop,
   useTheme,
   withAlpha,
@@ -51,6 +53,15 @@ import { AskAboutDateSheet } from './ask-about-date-sheet';
 import { HeroDots } from './hero-dots';
 import type { ItineraryLine } from './itinerary';
 import { ItineraryDays } from './itinerary-days';
+import {
+  GoodToKnow,
+  type GoodToKnowRow,
+  Highlights,
+  RelatedToursRail,
+  type RelatedTourVM,
+  RouteRibbon,
+  TrustList,
+} from './overview-extras';
 import { PhotoViewer, type TourDetailPhoto } from './photo-viewer';
 import { reviewBreakdownPercent } from './reviews';
 
@@ -67,6 +78,8 @@ export interface TourDetailFact {
   icon: 'clock' | 'users' | 'activity' | 'smile';
   label: string;
   value: string;
+  /** Câu giải thích dưới giá trị (`factDurationNote`…) — như thẻ fact của web; `null` = không có. */
+  note?: string | null;
 }
 
 export interface TourDetailDepartureRow {
@@ -132,9 +145,26 @@ export interface TourDetailScreenProps {
   /** Đã format sẵn (`tourDetail.reviewCount`), vd "3 reviews" — chỉ đọc khi `rating !== null`. */
   reviewCountLabel: string;
   notRatedLabel: string;
-  /** Tên các địa danh nối bằng " · ", đã ghép sẵn. */
-  destinationsLine: string;
+  /** Tên danh mục (vd "Trekking & Adventure") — chip cạnh chip sao; `null` khi chưa tải. */
+  categoryLabel: string | null;
+  categoryA11yLabel: string;
+  /** Bấm chip danh mục: mở Explore lọc sẵn danh mục này. */
+  onCategoryPress: () => void;
+  /** Tên các địa danh theo thứ tự lộ trình — vẽ thành dải lộ trình (`RouteRibbon`). */
+  routeStops: readonly string[];
   summary: string | null;
+  /** Cam kết ngắn dưới phần mô tả: luật huỷ miễn phí + một dòng mỗi loại chính sách. */
+  trustItems: readonly { icon: FeatherIconName; label: string }[];
+  highlightsTitle: string;
+  highlights: readonly string[];
+  goodToKnowTitle: string;
+  goodToKnowRows: readonly GoodToKnowRow[];
+  faqTitle: string;
+  faqRows: readonly GoodToKnowRow[];
+  showAllFaqsLabel: (n: number) => string;
+  relatedTitle: string;
+  relatedTours: readonly RelatedTourVM[];
+  onRelatedPress: (slug: string) => void;
   /** Chỉ chứa fact CÓ dữ liệu — route lọc trước (difficulty/suitableFor có thể rỗng). */
   facts: readonly TourDetailFact[];
   fromLabel: string;
@@ -407,8 +437,22 @@ export function TourDetailScreen({
   rating,
   reviewCountLabel,
   notRatedLabel,
-  destinationsLine,
+  categoryLabel,
+  categoryA11yLabel,
+  onCategoryPress,
+  routeStops,
   summary,
+  trustItems,
+  highlightsTitle,
+  highlights,
+  goodToKnowTitle,
+  goodToKnowRows,
+  faqTitle,
+  faqRows,
+  showAllFaqsLabel,
+  relatedTitle,
+  relatedTours,
+  onRelatedPress,
   facts,
   fromLabel,
   priceLabel,
@@ -646,7 +690,7 @@ export function TourDetailScreen({
     // Không header + không ảnh bìa ở đây — dùng edges mặc định (top+bottom)
     // để `Screen` tự cộng vùng an toàn đỉnh, nút lùi không chui dưới tai thỏ.
     return (
-      <Screen scrollable={false}>
+      <Screen topo scrollable={false}>
         <View style={{ alignSelf: 'flex-start' }}>
           <IconButton icon="arrow-left" size={22} accessibilityLabel={backLabel} onPress={onBack} />
         </View>
@@ -696,6 +740,8 @@ export function TourDetailScreen({
         <View
           style={{ height: HERO_HEIGHT, backgroundColor: theme.colors.muted, overflow: 'hidden' }}
         >
+          {/* Tour chưa có ảnh: vân đồng mức thay khung xám trơn (đợt style web 01/11). */}
+          {galleryImages.length === 0 ? <TopoPattern opacity={0.1} /> : null}
           {galleryImages.length === 0 ? null : (
             // B3 — pager ngang qua `galleryImages`. D5: bấm ảnh mở trình xem toàn màn
             // tại đúng ảnh đang xem. Chỉ dựng ảnh đang xem và hai ảnh kề để khỏi tải cả
@@ -762,26 +808,6 @@ export function TourDetailScreen({
             locations={[0, 0.35, 0.75, 1]}
             style={StyleSheet.absoluteFill}
           />
-          <View
-            style={{
-              position: 'absolute',
-              // Vùng an toàn đỉnh + nhịp thở — `Screen` không đệm phần này
-              // (`edges:['bottom']`, ảnh bleed hết mép trên), cùng cách `AuthHero`.
-              top: insets.top + theme.spacing(1.5),
-              left: theme.spacing(3),
-              right: theme.spacing(3),
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-            }}
-          >
-            <IconButton
-              icon="arrow-left"
-              accessibilityLabel={backLabel}
-              variant="glass"
-              onPress={onBack}
-            />
-            <FavoriteButton favorited={favorited} label={favoriteLabel} onPress={onFavoritePress} />
-          </View>
 
           {galleryImages.length <= 1 ? null : (
             <View
@@ -837,47 +863,83 @@ export function TourDetailScreen({
               gap: theme.spacing(1),
             }}
           >
-            {rating === null ? (
-              <AppText variant="caption" tone="muted">
-                {notRatedLabel}
-              </AppText>
-            ) : (
-              <View
-                style={{
-                  alignSelf: 'flex-start',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  height: theme.spacing(7),
-                  paddingHorizontal: theme.spacing(2.5),
-                  borderRadius: 999,
-                  gap: theme.spacing(1),
-                  backgroundColor: theme.colors.secondary,
-                }}
-              >
-                {/* Feather chỉ có sao viền — mockup muốn sao ĐẶC (data-fill="1"),
-                    đổi sang MaterialCommunityIcons (cùng gói @expo/vector-icons, không thêm phụ thuộc). */}
-                <MaterialCommunityIcons name="star" size={12} color={theme.colors.rating} />
-                <AppText
-                  variant="caption"
+            {/* Hàng chip: sao (hoặc "chưa có đánh giá") + danh mục. Danh mục là thứ web in ngay trên
+                tên tour; thiếu nó thì khách lọc "Trekking" xong vào tour không biết tour thuộc loại gì. */}
+            <View
+              style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: theme.spacing(2),
+              }}
+            >
+              {rating === null ? (
+                <AppText variant="caption" tone="muted">
+                  {notRatedLabel}
+                </AppText>
+              ) : (
+                <View
                   style={{
-                    color: theme.colors['secondary-foreground'],
-                    fontWeight: theme.weight.semibold,
+                    alignSelf: 'flex-start',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    height: theme.spacing(7),
+                    paddingHorizontal: theme.spacing(2.5),
+                    borderRadius: 999,
+                    gap: theme.spacing(1),
+                    backgroundColor: theme.colors.secondary,
                   }}
                 >
-                  {rating.toFixed(1)} · {reviewCountLabel}
-                </AppText>
-              </View>
-            )}
+                  {/* Feather chỉ có sao viền — mockup muốn sao ĐẶC (data-fill="1"),
+                    đổi sang MaterialCommunityIcons (cùng gói @expo/vector-icons, không thêm phụ thuộc). */}
+                  <MaterialCommunityIcons name="star" size={12} color={theme.colors.rating} />
+                  <AppText
+                    variant="caption"
+                    style={{
+                      color: theme.colors['secondary-foreground'],
+                      fontWeight: theme.weight.semibold,
+                    }}
+                  >
+                    {rating.toFixed(1)} ({reviewCountLabel})
+                  </AppText>
+                </View>
+              )}
+              {categoryLabel === null ? null : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={categoryA11yLabel}
+                  onPress={onCategoryPress}
+                  hitSlop={theme.spacing(1)}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    height: theme.spacing(7),
+                    paddingHorizontal: theme.spacing(2.5),
+                    borderRadius: 999,
+                    gap: theme.spacing(1),
+                    // Cùng kiểu chip sao bên cạnh (user 01/11): chip viền trong mờ trông như một
+                    // thứ khác loại đặt chung hàng.
+                    backgroundColor: theme.colors.secondary,
+                  }}
+                >
+                  <Icon name="tag" size={12} color={theme.colors['secondary-foreground']} />
+                  <AppText
+                    variant="caption"
+                    style={{
+                      color: theme.colors['secondary-foreground'],
+                      fontWeight: theme.weight.semibold,
+                    }}
+                  >
+                    {categoryLabel}
+                  </AppText>
+                </Pressable>
+              )}
+            </View>
             {/* Khối tên neo ở ĐÁY ảnh, nơi dải mờ đã chuyển hẳn sang màu `background` — nên chữ
                 dùng màu chữ của nền (`foreground`), không dùng `on-media` (trắng): ở nền sáng
                 chữ trắng trên dải trắng thì mất hẳn. */}
             <AppText variant="brand">{title}</AppText>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing(1) }}>
-              <Icon name="map-pin" size={12} color={theme.colors['muted-foreground']} />
-              <AppText variant="caption" tone="muted">
-                {destinationsLine}
-              </AppText>
-            </View>
+            <RouteRibbon stops={routeStops} />
           </View>
         </View>
 
@@ -904,6 +966,7 @@ export function TourDetailScreen({
                       {summary}
                     </AppText>
                   )}
+                  <TrustList items={trustItems} />
                   {facts.length === 0 ? null : (
                     // Lưới 2 cột đúng `.facts`/`.fact` bản vẽ (grid 1fr 1fr) — ghép
                     // theo CẶP thành từng hàng thay vì flexWrap tự do, để luôn ra
@@ -943,6 +1006,15 @@ export function TourDetailScreen({
                                   {fact.label}
                                 </AppText>
                                 <AppText variant="label">{fact.value}</AppText>
+                                {fact.note ? (
+                                  <AppText
+                                    variant="caption"
+                                    tone="muted"
+                                    style={{ marginTop: theme.spacing(1) }}
+                                  >
+                                    {fact.note}
+                                  </AppText>
+                                ) : null}
                               </View>
                             </FadeIn>
                           ))}
@@ -952,6 +1024,20 @@ export function TourDetailScreen({
                       ))}
                     </View>
                   )}
+                  <Highlights title={highlightsTitle} items={highlights} />
+                  <GoodToKnow
+                    title={goodToKnowTitle}
+                    rows={goodToKnowRows}
+                    faqTitle={faqTitle}
+                    faqs={faqRows}
+                    showAllFaqsLabel={showAllFaqsLabel}
+                  />
+                  <RelatedToursRail
+                    title={relatedTitle}
+                    tours={relatedTours}
+                    onPress={onRelatedPress}
+                    transformUrl={transformUrl}
+                  />
                 </View>
               ) : activeTab === 'itinerary' ? (
                 <View
@@ -1365,6 +1451,34 @@ export function TourDetailScreen({
           </View>
         </GestureDetector>
       </Reanimated.ScrollView>
+      {/* Nút lùi + tim trên ảnh bìa: đứng NGOÀI ScrollView, cố định ở đỉnh tới lúc header gọn thay
+          chỗ. Trước nằm trong hero nên cuộn theo nội dung — cuộn ~60–280dp thì cả hai khuất mà header
+          gọn chưa hiện, khách hết đường lùi/lưu tour (rà 01/11, A1). */}
+      {compactHeaderVisible ? null : (
+        <View
+          // Khung trải ngang cả màn: `box-none` để chỉ hai nút nhận chạm, khoảng giữa vẫn cuộn/bấm
+          // được nội dung phía dưới.
+          pointerEvents="box-none"
+          style={{
+            position: 'absolute',
+            // Vùng an toàn đỉnh + nhịp thở — `Screen` không đệm phần này
+            // (`edges:['bottom']`, ảnh bleed hết mép trên), cùng cách `AuthHero`.
+            top: insets.top + theme.spacing(1.5),
+            left: theme.spacing(3),
+            right: theme.spacing(3),
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+          }}
+        >
+          <IconButton
+            icon="arrow-left"
+            accessibilityLabel={backLabel}
+            variant="glass"
+            onPress={onBack}
+          />
+          <FavoriteButton favorited={favorited} label={favoriteLabel} onPress={onFavoritePress} />
+        </View>
+      )}
       {/* Header gọn (D2 bản vẽ 24/09) — chỉ mount khi đã cuộn qua khỏi ảnh
           bìa, đứng TRÊN hàng tab đang dính. Không mount lúc đầu để tránh
           trùng chữ tiêu đề/nhãn nút lùi-tim với khối hero (RNTL `getByText`/

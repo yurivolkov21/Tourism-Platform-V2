@@ -1,9 +1,12 @@
 import type Feather from '@expo/vector-icons/Feather';
-import { type ComponentProps, forwardRef, useEffect, useState } from 'react';
+import { type ComponentProps, forwardRef, useEffect, useRef, useState } from 'react';
 import { Pressable, TextInput, type TextInputProps, View } from 'react-native';
 import Reanimated, {
   interpolateColor,
+  Keyframe,
+  LinearTransition,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -107,102 +110,140 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
   }));
   const showLabel = filled || alwaysShowLabel || focused;
 
+  // Nhãn nổi trượt giữa chỗ placeholder và đường viền (Material 3) thay vì nhảy. Gốc biến đổi là
+  // góc trên-trái của ô (khung bọc nhãn rộng 0), nên chữ nhãn bắt đầu ở x = 16 (left 12 + đệm 4),
+  // tâm dọc ~0. Ở chỗ placeholder: chữ bắt đầu sau icon, tâm giữa ô cao 56 và cỡ chữ `base`.
+  const reduceMotion = useReducedMotion();
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+  }, []);
+  const restScale = theme.type.base.fontSize / theme.type.xs.fontSize;
+  const restX = theme.spacing(4) + (icon === undefined ? 0 : 24 + theme.spacing(3));
+  const atRest = {
+    opacity: 1,
+    transform: [
+      { translateX: restX - 16 * restScale },
+      { translateY: tall ? 24 : 28 },
+      { scale: restScale },
+    ],
+  };
+  const floated = {
+    opacity: 1,
+    transform: [{ translateX: 0 }, { translateY: 0 }, { scale: 1 }],
+  };
+  // Lần vẽ đầu (ô đã có sẵn giá trị) thì nhãn đứng yên trên viền, không bay lên lúc mở màn.
+  const animateLabel = mounted.current && !reduceMotion;
+  const labelEnter = new Keyframe({ 0: atRest, 100: floated }).duration(180);
+  // Về chỗ cũ rồi tắt dần — placeholder đã hiện ở đúng chỗ đó nên không thấy hai chữ chồng nhau.
+  const labelExit = new Keyframe({ 0: floated, 100: { ...atRest, opacity: 0 } }).duration(160);
+
   return (
-    <Shake active={invalid}>
-      <Reanimated.View
-        testID="text-field-outline"
-        style={[
-          {
-            flexDirection: 'row',
-            // `tall`: icon neo lên đầu — vài dòng chữ cao hơn icon thì canh giữa sẽ kéo
-            // icon trôi xuống lệch với dòng đầu tiên.
-            alignItems: tall ? 'flex-start' : 'center',
-            gap: theme.spacing(3),
-            minHeight: tall ? 96 : 56,
-            paddingHorizontal: theme.spacing(4),
-            paddingVertical: tall ? theme.spacing(3.5) : 0,
-            marginTop: theme.spacing(2.5),
-            borderRadius: 4,
-            borderWidth: invalid || focused ? 2 : 1,
-          },
-          borderStyle,
-        ]}
-      >
-        {showLabel ? (
+    // Ô tự trượt tới chỗ mới khi thứ phía trên đổi cao (câu lỗi, checklist mật khẩu…) thay vì nhảy.
+    <Reanimated.View layout={reduceMotion ? undefined : LinearTransition.duration(200)}>
+      <Shake active={invalid}>
+        <Reanimated.View
+          testID="text-field-outline"
+          style={[
+            {
+              flexDirection: 'row',
+              // `tall`: icon neo lên đầu — vài dòng chữ cao hơn icon thì canh giữa sẽ kéo
+              // icon trôi xuống lệch với dòng đầu tiên.
+              alignItems: tall ? 'flex-start' : 'center',
+              gap: theme.spacing(3),
+              minHeight: tall ? 96 : 56,
+              paddingHorizontal: theme.spacing(4),
+              paddingVertical: tall ? theme.spacing(3.5) : 0,
+              marginTop: theme.spacing(2.5),
+              borderRadius: 4,
+              borderWidth: invalid || focused ? 2 : 1,
+            },
+            borderStyle,
+          ]}
+        >
+          {showLabel ? (
+            <Reanimated.View
+              pointerEvents="none"
+              entering={animateLabel ? labelEnter : undefined}
+              exiting={reduceMotion ? undefined : labelExit}
+              style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0 }}
+            >
+              <AppText
+                testID="text-field-label"
+                variant="caption"
+                tone={invalid ? 'danger' : focused ? 'link' : 'muted'}
+                style={{
+                  position: 'absolute',
+                  top: -8,
+                  left: theme.spacing(3),
+                  paddingHorizontal: theme.spacing(1),
+                  backgroundColor: labelBackground ?? theme.colors.background,
+                }}
+              >
+                {label}
+              </AppText>
+            </Reanimated.View>
+          ) : null}
+          {icon === undefined ? null : (
+            <Icon name={icon} size={24} color={theme.colors['muted-foreground']} />
+          )}
+          <View style={{ flex: 1 }}>
+            <TextInput
+              ref={ref}
+              value={value}
+              // Nhãn đã nổi lên viền (đang gõ hoặc ép hiện) thì không in lại chính nó làm
+              // placeholder — chỉ còn placeholder riêng nếu nơi gọi truyền.
+              placeholder={filled ? undefined : showLabel ? placeholder : (placeholder ?? label)}
+              placeholderTextColor={theme.colors['muted-foreground']}
+              secureTextEntry={secure && !revealed}
+              multiline={multiline}
+              aria-invalid={invalid}
+              onFocus={(event) => {
+                setFocused(true);
+                onFocus?.(event);
+              }}
+              onBlur={(event) => {
+                setFocused(false);
+                onBlur?.(event);
+              }}
+              accessibilityLabel={label}
+              style={{
+                color: theme.colors.foreground,
+                fontWeight: theme.weight.normal,
+                fontSize: theme.type.base.fontSize,
+                // Ô tall: chữ bắt đầu từ trên, không canh giữa theo chiều dọc.
+                textAlignVertical: tall ? 'top' : 'center',
+                padding: 0,
+              }}
+              {...rest}
+            />
+          </View>
+          {secure ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={revealed ? hideLabel : revealLabel}
+              hitSlop={theme.spacing(2)}
+              onPress={() => setRevealed((shown) => !shown)}
+            >
+              <Icon
+                name={revealed ? 'eye-off' : 'eye'}
+                size={24}
+                color={theme.colors['muted-foreground']}
+              />
+            </Pressable>
+          ) : null}
+        </Reanimated.View>
+        {invalid ? (
           <AppText
-            testID="text-field-label"
             variant="caption"
-            tone={invalid ? 'danger' : focused ? 'link' : 'muted'}
-            style={{
-              position: 'absolute',
-              top: -8,
-              left: theme.spacing(3),
-              paddingHorizontal: theme.spacing(1),
-              backgroundColor: labelBackground ?? theme.colors.background,
-            }}
+            tone="danger"
+            accessibilityRole="alert"
+            style={{ marginTop: theme.spacing(1.25) }}
           >
-            {label}
+            {error}
           </AppText>
         ) : null}
-        {icon === undefined ? null : (
-          <Icon name={icon} size={24} color={theme.colors['muted-foreground']} />
-        )}
-        <View style={{ flex: 1 }}>
-          <TextInput
-            ref={ref}
-            value={value}
-            // Nhãn đã nổi lên viền (đang gõ hoặc ép hiện) thì không in lại chính nó làm
-            // placeholder — chỉ còn placeholder riêng nếu nơi gọi truyền.
-            placeholder={filled ? undefined : showLabel ? placeholder : (placeholder ?? label)}
-            placeholderTextColor={theme.colors['muted-foreground']}
-            secureTextEntry={secure && !revealed}
-            multiline={multiline}
-            aria-invalid={invalid}
-            onFocus={(event) => {
-              setFocused(true);
-              onFocus?.(event);
-            }}
-            onBlur={(event) => {
-              setFocused(false);
-              onBlur?.(event);
-            }}
-            accessibilityLabel={label}
-            style={{
-              color: theme.colors.foreground,
-              fontWeight: theme.weight.normal,
-              fontSize: theme.type.base.fontSize,
-              // Ô tall: chữ bắt đầu từ trên, không canh giữa theo chiều dọc.
-              textAlignVertical: tall ? 'top' : 'center',
-              padding: 0,
-            }}
-            {...rest}
-          />
-        </View>
-        {secure ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={revealed ? hideLabel : revealLabel}
-            hitSlop={theme.spacing(2)}
-            onPress={() => setRevealed((shown) => !shown)}
-          >
-            <Icon
-              name={revealed ? 'eye-off' : 'eye'}
-              size={24}
-              color={theme.colors['muted-foreground']}
-            />
-          </Pressable>
-        ) : null}
-      </Reanimated.View>
-      {invalid ? (
-        <AppText
-          variant="caption"
-          tone="danger"
-          accessibilityRole="alert"
-          style={{ marginTop: theme.spacing(1.25) }}
-        >
-          {error}
-        </AppText>
-      ) : null}
-    </Shake>
+      </Shake>
+    </Reanimated.View>
   );
 });

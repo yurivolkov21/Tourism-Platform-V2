@@ -11,6 +11,7 @@ import {
 import { useEffect, useRef } from 'react';
 import { type TextInput, View } from 'react-native';
 import { firstInvalidField } from '@/features/auth/first-invalid-field';
+import { ConfirmMatchHint, NewPasswordField } from '@/features/auth/password-hints';
 import { CHANGE_PASSWORD_FIELDS, type ChangePasswordField } from './change-password-flow';
 
 export interface ChangePasswordScreenProps {
@@ -77,7 +78,7 @@ export function ChangePasswordScreen({
           autoComplete="current-password"
           textContentType="password"
         />
-        <TextField
+        <NewPasswordField
           ref={newRef}
           label={copy.newLabel}
           icon="lock"
@@ -104,6 +105,11 @@ export function ChangePasswordScreen({
           autoCapitalize="none"
           autoComplete="new-password"
           textContentType="newPassword"
+        />
+        <ConfirmMatchHint
+          password={values.newPassword}
+          confirm={values.confirmPassword}
+          error={fieldErrors.confirmPassword}
         />
 
         <View style={{ marginTop: 'auto', paddingTop: theme.spacing(6) }}>

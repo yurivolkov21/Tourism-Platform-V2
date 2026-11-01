@@ -79,7 +79,7 @@ export function SignInScreen({
   }, [fieldErrors]);
 
   return (
-    <Screen edges={SCREEN_EDGES_UNDER_HEADER} padded={false}>
+    <Screen topo edges={SCREEN_EDGES_UNDER_HEADER} padded={false}>
       <AuthHero
         image={AUTH_PHOTOS.signIn}
         place={copy.photoPlace}

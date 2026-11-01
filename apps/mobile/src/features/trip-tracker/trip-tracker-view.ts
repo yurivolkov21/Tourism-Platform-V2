@@ -77,7 +77,7 @@ export function tripEndedView(
     reviewedLabel: t.reviewed,
     bookingDetailsRow: {
       label: t.bookingDetailsRow,
-      caption: `${booking.code} · ${t.paidAmount(paidMoney(booking))}`,
+      caption: `${booking.code}, ${t.paidAmount(paidMoney(booking))}`,
       onPress: on.openBooking,
     },
     whereToNextRow: {
@@ -132,7 +132,7 @@ export function tripDayView(
     tripNotesRow: { label: t.tripNotesRow, caption: t.tripNotesCaption, onPress: on.openNotes },
     bookingDetailsRow: {
       label: t.bookingDetailsRow,
-      caption: `${booking.code} · ${trips.travellersCount(travellerCount(booking))}`,
+      caption: `${booking.code}, ${trips.travellersCount(travellerCount(booking))}`,
       onPress: on.openBooking,
     },
     contactLabel: messages.mobile.booking.detail.contactLinkLabel,
@@ -143,7 +143,7 @@ export function tripDayView(
 /** Đầu màn chung của P1 và P2: khoảng ngày, số khách, tiến độ từ ngày đặt tới ngày đi. */
 function countdownHeader(booking: BookingDetail, today: string) {
   return {
-    subtitle: `${formatDepartureRange(booking.departureStartDate, booking.departureEndDate)} · ${trips.travellersCount(travellerCount(booking))}`,
+    subtitle: `${formatDepartureRange(booking.departureStartDate, booking.departureEndDate)}, ${trips.travellersCount(travellerCount(booking))}`,
     progressPercent: bookingProgressPercent(
       today,
       booking.createdAt.slice(0, 10),
@@ -164,13 +164,17 @@ function milestones(booking: BookingDetail, tour: TourDetail): TripMilestone[] {
       state: 'done',
       icon: 'check',
       title: t.milestoneBookingConfirmed,
-      caption: `${formatFullDate(booking.createdAt)} · ${booking.code}`,
+      caption: `${formatFullDate(booking.createdAt)}, ${booking.code}`,
     },
     {
       state: 'done',
       icon: 'check',
       title: t.milestonePaidInFull,
-      caption: `${formatFullDate(booking.paidAt ?? booking.createdAt)} · ${paidMoney(booking)} · ${provider}`,
+      caption: t.milestonePaidCaption(
+        formatFullDate(booking.paidAt ?? booking.createdAt),
+        paidMoney(booking),
+        provider,
+      ),
     },
     ...(cancellation === null
       ? []
@@ -196,7 +200,7 @@ function milestones(booking: BookingDetail, tour: TourDetail): TripMilestone[] {
     {
       state: 'upcoming',
       icon: 'flag',
-      title: `${t.milestoneDeparture} · ${formatDepartureDate(booking.departureStartDate)}`,
+      title: `${t.milestoneDeparture}: ${formatDepartureDate(booking.departureStartDate)}`,
       caption: tour.meetingPoint ?? '',
     },
   ];

@@ -142,6 +142,18 @@ describe('validateChangePassword', () => {
   });
 });
 
+describe('validateChangePassword — trùng mật khẩu cũ', () => {
+  it('mới giống hệt hiện tại → sameAsCurrent', () => {
+    expect(
+      validateChangePassword({
+        currentPassword: 'Sup3r$ecret',
+        newPassword: 'Sup3r$ecret',
+        confirmPassword: 'Sup3r$ecret',
+      }),
+    ).toEqual({ newPassword: t.newPassword.sameAsCurrent });
+  });
+});
+
 describe('validateOtp', () => {
   it('trống → required; thiếu chữ số → incomplete; đủ 6 → undefined', () => {
     expect(validateOtp('')).toBe(t.otp.required);

@@ -5,7 +5,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { AuthGateSheet } from '@/features/auth/auth-gate-sheet';
 import { consumePendingReplay, setPendingReturn } from '@/features/auth/return-to';
 import { matchDestinationsByPrefix } from '@/features/explore/destination-search';
-import { destinationFromEntryParams } from '@/features/explore/explore-entry';
+import {
+  categoryFromEntryParams,
+  destinationFromEntryParams,
+} from '@/features/explore/explore-entry';
 import { exploreToursInput } from '@/features/explore/explore-prefetch';
 import { ExploreScreen, type ExploreStatus } from '@/features/explore/explore-screen';
 import { FilterSheet, type SortKey } from '@/features/explore/filter-sheet';
@@ -39,11 +42,13 @@ const DIFFICULTY_KEYS = ['EASY', 'MODERATE', 'CHALLENGING'] as const;
  * (ADR-0055 §2, khuôn `features/home`).
  */
 function ExploreRoute() {
-  const params = useLocalSearchParams<{ destination?: string; nav?: string }>();
+  const params = useLocalSearchParams<{ destination?: string; category?: string; nav?: string }>();
   const [destinationSlug, setDestinationSlug] = useState<string | null>(
     destinationFromEntryParams(params) ?? null,
   );
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(
+    categoryFromEntryParams(params) ?? null,
+  );
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<TourFilterState>(EMPTY_TOUR_FILTERS);
@@ -69,7 +74,9 @@ function ExploreRoute() {
   useEffect(() => {
     const next = destinationFromEntryParams({ destination: params.destination });
     if (next !== undefined) setDestinationSlug(next);
-  }, [params.destination, params.nav]);
+    const nextCategory = categoryFromEntryParams({ category: params.category });
+    if (nextCategory !== undefined) setSelectedCategory(nextCategory);
+  }, [params.destination, params.category, params.nav]);
 
   // Chờ ~300ms sau phím cuối mới gọi API (handoff §1) — gõ liên tục không bắn
   // một request mỗi phím.
@@ -283,7 +290,11 @@ function ExploreRoute() {
             slug: tour.slug,
             imageUrl: tour.cover?.url ?? null,
             title: tour.title,
-            locationLabel: `${primary?.name ?? ''} · ${home.durationDays(tour.durationDays)}`,
+            // Danh mục là dòng chữ nhỏ trên tên tour (rà 01/11): lọc "Trekking" xong khách phải
+            // thấy tour nào thuộc Trekking — như dòng danh mục trên tên tour của web.
+            categoryLabel: tour.category.name,
+            locationLabel: primary?.name ?? null,
+            durationLabel: home.durationDays(tour.durationDays),
             // Giá "from", giá gạch (chỉ khi có khuyến mãi thật, luật 15/09 của web) và dòng đợt
             // đọc `nextDeparture` có sẵn trên thẻ — chung luật với thẻ Saved.
             ...tourCardLabels(tour),

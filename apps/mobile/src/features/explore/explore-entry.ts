@@ -13,12 +13,18 @@
 // ngầm (`UnknownInputParams`), interface thì không có.
 export type ExploreEntryParams = {
   destination: string;
+  /** Danh mục (chip ở chi tiết tour, rà 01/11) — cùng luật `''` = bỏ lọc như `destination`. */
+  category: string;
   nav: string;
 };
 
-/** Dựng param vào Explore; `null` = xem tất cả tour (bỏ lọc điểm đến). */
-export function exploreEntryParams(destination: string | null, nonce: string): ExploreEntryParams {
-  return { destination: destination ?? '', nav: nonce };
+/** Dựng param vào Explore; `null` = bỏ lọc tương ứng (điểm đến / danh mục). */
+export function exploreEntryParams(
+  destination: string | null,
+  nonce: string,
+  category: string | null = null,
+): ExploreEntryParams {
+  return { destination: destination ?? '', category: category ?? '', nav: nonce };
 }
 
 /**
@@ -29,6 +35,15 @@ export function exploreEntryParams(destination: string | null, nonce: string): E
 export function destinationFromEntryParams(params: {
   destination?: string;
 }): string | null | undefined {
-  if (params.destination === undefined) return undefined;
-  return params.destination === '' ? null : params.destination;
+  return filterFromEntryParam(params.destination);
+}
+
+/** Như `destinationFromEntryParams`, cho danh mục. */
+export function categoryFromEntryParams(params: { category?: string }): string | null | undefined {
+  return filterFromEntryParam(params.category);
+}
+
+function filterFromEntryParam(value: string | undefined): string | null | undefined {
+  if (value === undefined) return undefined;
+  return value === '' ? null : value;
 }

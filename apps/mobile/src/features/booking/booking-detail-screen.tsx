@@ -11,6 +11,7 @@ import {
   PopIn,
   SCREEN_EDGES_UNDER_HEADER,
   Screen,
+  TopoPattern,
   useTheme,
   withAlpha,
 } from '@tourism/mobile-ui';
@@ -98,8 +99,11 @@ function CompactTripCard({
         borderColor: theme.colors.border,
         borderRadius: theme.radius.base * 2,
         backgroundColor: theme.colors.card,
+        overflow: 'hidden',
       }}
     >
+      {/* Vân đồng mức như thẻ đếm ngược của màn theo dõi chuyến (đợt style web 01/11). */}
+      <TopoPattern variant="wide" opacity={0.12} />
       <View
         style={{
           width: thumbSize,

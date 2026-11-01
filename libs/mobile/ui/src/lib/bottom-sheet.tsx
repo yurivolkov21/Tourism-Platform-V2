@@ -2,6 +2,8 @@ import { type ReactNode, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Animated,
+  Keyboard,
+  LayoutAnimation,
   Modal,
   PanResponder,
   Platform,
@@ -59,16 +61,43 @@ export function shouldDismissDrag(dy: number, vy: number): boolean {
 const OVERSHOOT_EXTENSION = 56;
 
 /**
- * Lớp bọc đẩy tấm lên theo bàn phím. CHỈ iOS dùng `useAnimatedKeyboard`: Android đã tự co
- * (`adjustResize`), và hook này trên Android chiếm quyền xử lý inset của cửa sổ — để nó chạy ở mọi
- * màn có sheet từng làm vùng an toàn đỉnh/đáy đổi thành trắng. Hook nằm trong component riêng, chỉ
- * dựng khi tấm đang mở (`Modal` chỉ có con lúc `mounted`), nên không chạm tới các màn bên dưới.
+ * Lớp bọc đẩy tấm lên theo bàn phím. iOS dùng `useAnimatedKeyboard`. Android KHÔNG dùng hook đó: trên
+ * Android nó chiếm quyền xử lý inset của cửa sổ — để nó chạy ở mọi màn có sheet từng làm vùng an toàn
+ * đỉnh/đáy đổi thành trắng. Hook nằm trong component riêng, chỉ dựng khi tấm đang mở (`Modal` chỉ có
+ * con lúc `mounted`), nên không chạm tới các màn bên dưới.
  */
 function KeyboardAvoider({ children }: { children: ReactNode }) {
   return Platform.OS === 'ios' ? (
     <IosKeyboardAvoider>{children}</IosKeyboardAvoider>
   ) : (
-    <View testID="bottom-sheet-keyboard-avoider" style={{ flex: 1 }}>
+    <AndroidKeyboardAvoider>{children}</AndroidKeyboardAvoider>
+  );
+}
+
+/**
+ * Android (bug 01/11): bản build thật bật edge-to-edge nên cửa sổ `Modal` tràn viền và `adjustResize`
+ * KHÔNG co nội dung nữa — bàn phím che tấm. Expo Go không tràn viền nên vẫn co, vì vậy lỗi chỉ lộ ở
+ * production. `Modal` nay ép tràn viền ở mọi nơi (`statusBarTranslucent`/`navigationBarTranslucent`)
+ * để Expo Go giống bản build, rồi tự đệm đáy bằng chiều cao bàn phím từ sự kiện `Keyboard`.
+ */
+function AndroidKeyboardAvoider({ children }: { children: ReactNode }) {
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const update = (height: number) => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setKeyboardHeight(height);
+    };
+    const show = Keyboard.addListener('keyboardDidShow', (event) =>
+      update(event.endCoordinates.height),
+    );
+    const hide = Keyboard.addListener('keyboardDidHide', () => update(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  return (
+    <View testID="bottom-sheet-keyboard-avoider" style={{ flex: 1, paddingBottom: keyboardHeight }}>
       {children}
     </View>
   );
@@ -160,7 +189,14 @@ export function BottomSheet({ visible, onClose, closeLabel, children }: BottomSh
   ).current;
 
   return (
-    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
+    <Modal
+      visible={mounted}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
       <KeyboardAvoider>
         {/* Nền overlay mờ dần theo vị trí tấm (kéo xuống / đóng càng xa càng trong); đứng sau tấm nên góc bo
             của tấm vẫn lộ ra đúng màu overlay. */}

@@ -14,6 +14,8 @@ export interface TourCardPriceInput {
 export interface TourCardLabels {
   priceLabel: string;
   compareAtPriceLabel: string | null;
+  /** "−15%" trên góc ảnh — chỉ khi có giá gạch (cùng điều kiện). */
+  discountLabel: string | null;
   departureLabel: string;
   seatsLabel: string | null;
   almostFull: boolean;
@@ -31,6 +33,9 @@ export function tourCardLabels(tour: TourCardPriceInput): TourCardLabels {
   return {
     priceLabel: formatMoney(tour.priceFrom, tour.currency),
     compareAtPriceLabel: showCompare ? formatMoney(tour.basePrice, tour.currency) : null,
+    discountLabel: showCompare
+      ? messages.mobile.explore.discountBadge(discountPercent(tour.basePrice, tour.priceFrom))
+      : null,
     departureLabel:
       nextDeparture === null
         ? messages.mobile.explore.datesOnRequest
@@ -39,4 +44,14 @@ export function tourCardLabels(tour: TourCardPriceInput): TourCardLabels {
       nextDeparture === null ? null : messages.mobile.tourDetail.seatsLeft(nextDeparture.seatsLeft),
     almostFull: nextDeparture !== null && nextDeparture.seatsLeft <= ALMOST_FULL_THRESHOLD,
   };
+}
+
+/**
+ * Phần trăm giảm, làm tròn xuống — cùng công thức `discountPercent` của web: tính trên SỐ XU NGUYÊN
+ * để `(35 − 28.35) / 35` ra đúng 19 chứ không phải 18,999… rồi cắt còn 18.
+ */
+export function discountPercent(basePrice: string, price: string): number {
+  const base = Math.round(Number(basePrice) * 100);
+  const now = Math.round(Number(price) * 100);
+  return Math.floor(((base - now) * 100) / base);
 }

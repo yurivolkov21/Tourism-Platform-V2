@@ -15,7 +15,8 @@ function baseProps(overrides: Partial<SearchResultsProps> = {}): SearchResultsPr
         slug: 'ha-giang-loop-4d',
         imageUrl: null,
         title: 'Hà Giang Loop by Easyrider 4D3N',
-        locationLabel: 'Hà Giang · 4 days · From $329',
+        locationLabel: 'Hà Giang, 4 days',
+        priceLabel: 'From $329',
       },
     ],
     onDestinationPress: jest.fn(),
@@ -33,7 +34,8 @@ describe('SearchResults', () => {
     expect(screen.getByText('11 tours')).toBeTruthy();
     expect(screen.getByText('6 tours')).toBeTruthy();
     expect(screen.getByText('Hà Giang Loop by Easyrider 4D3N')).toBeTruthy();
-    expect(screen.getByText('Hà Giang · 4 days · From $329')).toBeTruthy();
+    expect(screen.getByText('Hà Giang, 4 days')).toBeTruthy();
+    expect(screen.getByText('From $329')).toBeTruthy();
   });
 
   it('bấm thẻ địa danh gọi onDestinationPress đúng slug', async () => {

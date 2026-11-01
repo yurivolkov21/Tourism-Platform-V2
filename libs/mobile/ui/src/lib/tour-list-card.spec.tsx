@@ -10,7 +10,8 @@ describe('TourListCard', () => {
         imageUrl={null}
         imageAlt="Hội An"
         title="Hội An Old Town & Lantern Evening"
-        locationLabel="Hội An · 1 day"
+        locationLabel="Hội An"
+        durationLabel="1 day"
         fromLabel="From"
         priceLabel="$39"
         compareAtPriceLabel={null}
@@ -23,7 +24,8 @@ describe('TourListCard', () => {
       />,
     );
     expect(screen.getByText('Hội An Old Town & Lantern Evening')).toBeTruthy();
-    expect(screen.getByText('Hội An · 1 day')).toBeTruthy();
+    expect(screen.getByText('Hội An')).toBeTruthy();
+    expect(screen.getByText('1 day')).toBeTruthy();
     expect(screen.getByText('From')).toBeTruthy();
     expect(screen.getByText('$39')).toBeTruthy();
     expect(screen.getByText('4.8')).toBeTruthy();
@@ -35,7 +37,8 @@ describe('TourListCard', () => {
         imageUrl={null}
         imageAlt="Hội An"
         title="Tour"
-        locationLabel="Hội An · 1 day"
+        locationLabel="Hội An"
+        durationLabel="1 day"
         fromLabel="From"
         priceLabel="$39"
         compareAtPriceLabel={null}
@@ -56,7 +59,8 @@ describe('TourListCard', () => {
         imageUrl={null}
         imageAlt="Đà Nẵng"
         title="Tour"
-        locationLabel="Đà Nẵng · 4 days"
+        locationLabel="Đà Nẵng"
+        durationLabel="4 days"
         fromLabel="From"
         priceLabel="$419"
         compareAtPriceLabel="$459"
@@ -80,7 +84,8 @@ describe('TourListCard', () => {
         imageUrl={null}
         imageAlt="Hội An"
         title="Tour"
-        locationLabel="Hội An · 1 day"
+        locationLabel="Hội An"
+        durationLabel="1 day"
         fromLabel="From"
         priceLabel="$39"
         compareAtPriceLabel={null}
@@ -104,7 +109,8 @@ describe('TourListCard', () => {
     imageUrl: null,
     imageAlt: 'Hà Giang',
     title: 'Ha Giang Loop',
-    locationLabel: 'Ha Giang · 4 days',
+    locationLabel: 'Ha Giang',
+    durationLabel: '4 days',
     fromLabel: 'From',
     priceLabel: '$480',
     compareAtPriceLabel: null,
@@ -155,6 +161,24 @@ describe('TourListCard', () => {
 
     const seats = StyleSheet.flatten(screen.getByTestId('tour-list-card-seats').props.style);
     expect(seats.color).toBe(theme.colors['muted-foreground']);
+  });
+
+  it('chip giảm giá đứng trên ảnh khi có; không có thì không vẽ', async () => {
+    await renderWithTheme(<TourListCard {...base} discountLabel="−15%" />);
+    expect(screen.getByText('−15%')).toBeTruthy();
+  });
+
+  it('danh mục là dòng chữ nhỏ trên tên tour; bỏ trống thì không có', async () => {
+    await renderWithTheme(<TourListCard {...base} categoryLabel="Trekking & Adventure" />);
+    expect(screen.getByTestId('tour-list-card-category').props.children).toBe(
+      'Trekking & Adventure',
+    );
+  });
+
+  it('chưa gắn địa danh thì chỉ còn thời lượng', async () => {
+    await renderWithTheme(<TourListCard {...base} locationLabel={null} durationLabel="2 days" />);
+    expect(screen.getByText('2 days')).toBeTruthy();
+    expect(screen.queryByTestId('tour-list-card-category')).toBeNull();
   });
 
   it('không có departureLabel thì ẩn dòng đợt', async () => {

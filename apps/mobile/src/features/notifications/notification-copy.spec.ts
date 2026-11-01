@@ -1,5 +1,5 @@
 import { messages } from '@tourism/i18n';
-import { describeNotification } from './notification-copy';
+import { describeNotification, describeNotifications } from './notification-copy';
 import type { AppNotification } from './notifications';
 
 const base: AppNotification = {
@@ -62,5 +62,23 @@ describe('describeNotification', () => {
       expect(row.title.length).toBeGreaterThan(0);
       expect(row.body.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('describeNotifications', () => {
+  it('dòng trùng y hệt (nhiều đơn cùng đợt) thì gắn mã đơn, dòng riêng giữ gọn', () => {
+    const rows = describeNotifications(
+      [
+        { ...base, daysUntil: 13 },
+        { ...base, id: 'departing:BK-2', code: 'BK-2', daysUntil: 13 },
+        { ...base, id: 'departing:BK-3', code: 'BK-3', tourTitle: 'Sa Pa', daysUntil: 13 },
+      ],
+      () => true,
+    );
+    expect(rows.map((row) => row.body)).toEqual([
+      'Departs in 13 days, BK-1',
+      'Departs in 13 days, BK-2',
+      'Departs in 13 days',
+    ]);
   });
 });

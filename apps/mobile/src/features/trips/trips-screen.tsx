@@ -264,7 +264,12 @@ export function TripsScreen({
   const theme = useTheme();
 
   return (
-    <Screen edges={SCREEN_EDGES_UNDER_TABS} padded={false} scrollable={false}>
+    <Screen
+      topo={status === 'error' || (status !== 'loading' && !hasAnyTrips)}
+      edges={SCREEN_EDGES_UNDER_TABS}
+      padded={false}
+      scrollable={false}
+    >
       <View style={{ flex: 1, gap: theme.spacing(4) }}>
         <LargeTitleHeader title={title} />
 

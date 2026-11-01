@@ -57,7 +57,12 @@ export function NotificationsScreen({
   const theme = useTheme();
 
   return (
-    <Screen edges={SCREEN_EDGES_UNDER_HEADER} padded={false} scrollable={false}>
+    <Screen
+      topo={status === 'error' || (status !== 'loading' && rows.length === 0)}
+      edges={SCREEN_EDGES_UNDER_HEADER}
+      padded={false}
+      scrollable={false}
+    >
       {status === 'loading' ? (
         <View style={{ padding: theme.spacing(4), gap: theme.spacing(3) }}>
           {[0, 1, 2].map((i) => (

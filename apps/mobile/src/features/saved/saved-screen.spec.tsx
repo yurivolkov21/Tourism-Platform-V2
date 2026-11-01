@@ -12,7 +12,8 @@ function baseProps(overrides: Partial<SavedScreenProps> = {}): SavedScreenProps 
         slug: 'hoi-an-lantern-evening',
         imageUrl: null,
         title: 'Hội An Old Town & Lantern Evening',
-        locationLabel: 'Hội An · 1 day',
+        locationLabel: 'Hội An',
+        durationLabel: '1 day',
         priceLabel: '$39',
         compareAtPriceLabel: '$45',
         departureLabel: 'Next departure: Tue 3 Nov',
@@ -26,7 +27,8 @@ function baseProps(overrides: Partial<SavedScreenProps> = {}): SavedScreenProps 
         slug: 'mai-chau-cycling-2d',
         imageUrl: null,
         title: 'Mai Châu Valley Cycling 2D1N',
-        locationLabel: 'Mai Châu · 2 days',
+        locationLabel: 'Mai Châu',
+        durationLabel: '2 days',
         priceLabel: '$99',
         compareAtPriceLabel: null,
         departureLabel: 'Dates on request',
@@ -59,7 +61,7 @@ describe('SavedScreen', () => {
 
     expect(screen.getByText('$45')).toBeTruthy();
     expect(screen.getByText('Next departure: Tue 3 Nov')).toBeTruthy();
-    expect(screen.getByText('· 8 seats left')).toBeTruthy();
+    expect(screen.getByText('8 seats left')).toBeTruthy();
     expect(screen.queryByText('Dates on request')).toBeNull();
   });
 

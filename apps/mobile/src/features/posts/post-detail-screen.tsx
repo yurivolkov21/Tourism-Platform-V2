@@ -111,7 +111,7 @@ export function PostDetailScreen({
     // là quay lại (như D7 của `TourDetailScreen`).
     const isError = status === 'error';
     return (
-      <Screen edges={['bottom']} scrollable={false}>
+      <Screen topo edges={['bottom']} scrollable={false}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <EmptyState title={isError ? errorTitle : notFoundTitle} surface={false}>
             <Button

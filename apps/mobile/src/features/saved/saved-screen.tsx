@@ -26,12 +26,15 @@ export interface SavedTourVM {
   slug: string;
   imageUrl: string | null;
   title: string;
-  /** "Hội An · 1 day" — địa danh chính + thời lượng đã ghép sẵn, cùng khuôn
-      `ExploreScreen`. Route tự nối, `null destinationName` rơi về chỉ số ngày. */
-  locationLabel: string;
+  /** Địa danh chính; `null` (tour chưa gắn địa danh) = thẻ chỉ in thời lượng. Wishlist chưa trả
+      danh mục nên thẻ Saved không có dòng danh mục như Explore. */
+  locationLabel: string | null;
+  durationLabel: string;
   /** Giá "from", giá gạch và dòng đợt — cùng luật thẻ Explore (`tourCardLabels`, review M2-14). */
   priceLabel: string;
   compareAtPriceLabel: string | null;
+  /** "−15%" trên góc ảnh; bỏ trống = không giảm giá. */
+  discountLabel?: string | null;
   departureLabel: string | null;
   seatsLabel: string | null;
   almostFull: boolean;
@@ -99,7 +102,12 @@ export function SavedScreen({
   const cardWidth = useWindowDimensions().width - theme.spacing(8);
 
   return (
-    <Screen edges={SCREEN_EDGES_UNDER_TABS} padded={false} scrollable={false}>
+    <Screen
+      topo={status === 'error' || (status !== 'loading' && items.length === 0)}
+      edges={SCREEN_EDGES_UNDER_TABS}
+      padded={false}
+      scrollable={false}
+    >
       {/* gap(2) chứ không gap(4) như trước: card đầu tiên phải NẰM GẦN dòng
           đếm hơn là cách xa nó — khoảng cách title↔count (gap(4) trong khối
           bên dưới) mới là khoảng lớn, count↔card phải hẹp hơn. */}
@@ -206,9 +214,11 @@ export function SavedScreen({
                           imageAlt={item.title}
                           title={item.title}
                           locationLabel={item.locationLabel}
+                          durationLabel={item.durationLabel}
                           fromLabel={fromLabel}
                           priceLabel={item.priceLabel}
                           compareAtPriceLabel={item.compareAtPriceLabel}
+                          discountLabel={item.unavailable ? null : item.discountLabel}
                           departureLabel={item.departureLabel}
                           seatsLabel={item.seatsLabel}
                           almostFull={item.almostFull}

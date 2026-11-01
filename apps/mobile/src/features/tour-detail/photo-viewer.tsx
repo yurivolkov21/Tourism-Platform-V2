@@ -23,17 +23,17 @@ export interface TourDetailPhoto {
   /** URL đã chọn sẵn để hiển thị — `VIDEO` đã quy về `posterUrl` từ trước (route). */
   url: string;
   alt: string | null;
-  /** Đã ghép sẵn ("Photo: Nguyễn Minh · CC BY-SA 4.0") — `null` = không vẽ dòng. */
+  /** Đã ghép sẵn ("Nguyễn Minh (CC BY-SA 4.0)") — `null` = không vẽ dòng. */
   creditLine: string | null;
 }
 
 /**
- * Ghi công ảnh (ADR-0020, D5) — nối `author`/`license` bằng " · ", bỏ phần
- * nào null. Cả hai null → `null` (KHÔNG vẽ dòng ghi công, khớp bản vẽ).
+ * Ghi công ảnh (ADR-0020, D5) — "Tác giả (giấy phép)", kiểu ghi công ảnh quen thuộc; bỏ phần nào
+ * null. Cả hai null → `null` (KHÔNG vẽ dòng ghi công, khớp bản vẽ). Bỏ dấu " · " (user 01/11).
  */
 export function mediaCreditText(author: string | null, license: string | null): string | null {
-  const parts = [author, license].filter((value): value is string => value !== null);
-  return parts.length === 0 ? null : parts.join(' · ');
+  if (author !== null && license !== null) return `${author} (${license})`;
+  return author ?? license;
 }
 
 /**

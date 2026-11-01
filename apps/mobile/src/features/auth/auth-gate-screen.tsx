@@ -60,7 +60,7 @@ export function AuthGateScreen({
     // dồn thêm spacing(5) ngang + spacing(4) dọc lên trên đó, làm `pageTitle`
     // (A2) lệch phải so với tiêu đề cùng kiểu ở `AccountScreen`/`SavedScreen`
     // (cả hai đều `padded={false}` + tự canh, phản hồi 26/09).
-    <Screen edges={SCREEN_EDGES_UNDER_TABS} padded={false}>
+    <Screen topo edges={SCREEN_EDGES_UNDER_TABS} padded={false}>
       {pageTitle === undefined ? null : (
         <View style={{ paddingHorizontal: theme.spacing(6), paddingTop: theme.spacing(3) }}>
           <AppText variant="title">{pageTitle}</AppText>

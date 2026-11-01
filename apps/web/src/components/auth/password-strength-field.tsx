@@ -1,5 +1,6 @@
 'use client';
 
+import { PASSWORD_REQUIREMENTS } from '@tourism/core';
 import { messages } from '@tourism/i18n';
 import {
   InputGroup,
@@ -30,14 +31,9 @@ import { FieldError, invalidProps } from './field-error';
 // "form đăng kí phải rõ ràng") — vẫn MỘT hàng pill (điều kiện vừa laptop 768p)
 // nhưng là TỪ THẬT; câu đầy đủ vẫn ở `text` cho tooltip + trình đọc màn hình.
 // W-09 (13/10): chữ của nhãn, câu đầy đủ và trạng thái nằm ở `authForms.passwordStrength`.
+// Danh sách yêu cầu dùng chung với mobile — ở `@tourism/core`.
 const copy = messages.authForms.passwordStrength;
-const REQUIREMENTS = [
-  { regex: /.{8,}/, ...copy.requirements.length },
-  { regex: /[a-z]/, ...copy.requirements.lowercase },
-  { regex: /[A-Z]/, ...copy.requirements.uppercase },
-  { regex: /[0-9]/, ...copy.requirements.number },
-  { regex: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/, ...copy.requirements.symbol },
-] as const;
+const REQUIREMENTS = PASSWORD_REQUIREMENTS;
 
 /** Màu vạch theo điểm: 0 nền · ≤1 đỏ · ≤3 hổ phách · 4 jade nhạt · 5 jade */
 function barColor(score: number): string {

@@ -16,7 +16,7 @@ function baseProps(overrides: Partial<TripDayScreenProps> = {}): TripDayScreenPr
       { time: '11:00', text: 'Cooking class', state: 'active' },
       { time: '12:30', text: 'Lunch', state: 'upcoming' },
     ],
-    nextDayRow: { label: 'Tomorrow · Day 3', caption: 'Over the pass', onPress: jest.fn() },
+    nextDayRow: { label: 'Tomorrow: Day 3', caption: 'Over the pass', onPress: jest.fn() },
     tripNotesRow: {
       label: 'Trip notes',
       caption: "What to bring, what's included",
@@ -24,7 +24,7 @@ function baseProps(overrides: Partial<TripDayScreenProps> = {}): TripDayScreenPr
     },
     bookingDetailsRow: {
       label: 'Booking details',
-      caption: 'BK-001 · 3 travellers',
+      caption: 'BK-001, 3 travellers',
       onPress: jest.fn(),
     },
     contactLabel: 'Contact us',
@@ -39,7 +39,7 @@ describe('TripDayScreen', () => {
 
     expect(screen.getByText('A full day in Hội An')).toBeTruthy();
     expect(screen.getByText('Cooking class')).toBeTruthy();
-    expect(screen.getByText('Tomorrow · Day 3')).toBeTruthy();
+    expect(screen.getByText('Tomorrow: Day 3')).toBeTruthy();
     expect(screen.getByText('Trip notes')).toBeTruthy();
     expect(screen.getByText('Booking details')).toBeTruthy();
   });
@@ -47,7 +47,7 @@ describe('TripDayScreen', () => {
   it('vắng nextDayRow (ngày cuối) thì không vẽ hàng đó', async () => {
     await renderWithTheme(<TripDayScreen {...baseProps({ nextDayRow: undefined })} />);
 
-    expect(screen.queryByText('Tomorrow · Day 3')).toBeNull();
+    expect(screen.queryByText('Tomorrow: Day 3')).toBeNull();
   });
 
   it('bấm Contact us gọi onContactPress', async () => {

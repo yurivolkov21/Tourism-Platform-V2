@@ -398,7 +398,7 @@ describe('bookingTrip / bookingEnquiryParams', () => {
     expect(bookingEnquiryParams(makeBooking({}))).toEqual({
       tourSlug: 'test-tour',
       tripTitle: 'Test tour',
-      tripSubtitle: 'Sat 17 – Sat 17 Oct',
+      tripSubtitle: 'Sat 17 Oct',
     });
     expect(
       bookingEnquiryParams(

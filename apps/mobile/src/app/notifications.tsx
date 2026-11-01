@@ -3,7 +3,7 @@ import { Button, EmptyState, SCREEN_EDGES_UNDER_HEADER, Screen } from '@tourism/
 import { router } from 'expo-router';
 import { View } from 'react-native';
 import { setPendingReturn } from '@/features/auth/return-to';
-import { describeNotification } from '@/features/notifications/notification-copy';
+import { describeNotifications } from '@/features/notifications/notification-copy';
 import { notificationTarget } from '@/features/notifications/notifications';
 import {
   NotificationsScreen,
@@ -22,7 +22,7 @@ export default function NotificationsRoute() {
 
   if (!state.signedIn) {
     return (
-      <Screen edges={SCREEN_EDGES_UNDER_HEADER} scrollable={false}>
+      <Screen topo edges={SCREEN_EDGES_UNDER_HEADER} scrollable={false}>
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <EmptyState title={copy.signedOutTitle} body={copy.signedOutBody} surface={false}>
             <Button
@@ -48,8 +48,9 @@ export default function NotificationsRoute() {
   return (
     <NotificationsScreen
       status={status}
-      rows={state.notifications.map((notification) =>
-        describeNotification(notification, !state.readIds.has(notification.id)),
+      rows={describeNotifications(
+        state.notifications,
+        (notification) => !state.readIds.has(notification.id),
       )}
       unreadCount={state.unreadCount}
       markAllLabel={copy.markAllRead}

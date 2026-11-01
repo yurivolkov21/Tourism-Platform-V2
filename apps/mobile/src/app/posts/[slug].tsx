@@ -54,7 +54,7 @@ export default function PostDetailRoute() {
     durationLabel:
       tour.difficulty === null
         ? home.durationDays(tour.durationDays)
-        : `${home.durationDays(tour.durationDays)} · ${difficultyLabels[tour.difficulty]}`,
+        : `${home.durationDays(tour.durationDays)}, ${difficultyLabels[tour.difficulty]}`,
     priceLabel: formatMoney(tour.priceFrom, tour.currency),
   }));
 

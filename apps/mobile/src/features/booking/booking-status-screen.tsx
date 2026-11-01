@@ -39,7 +39,7 @@ export function BookingStatusScreen({
   const theme = useTheme();
 
   return (
-    <Screen edges={['bottom']}>
+    <Screen topo edges={['bottom']}>
       {progress === null ? null : <View style={{ paddingTop: theme.spacing(2) }}>{progress}</View>}
       <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: theme.spacing(2) }}>
         <EmptyState

@@ -355,6 +355,9 @@ export const messages = {
       },
       requirementState: (text: string, met: boolean) =>
         `${text} — requirement ${met ? 'met' : 'not met'}`,
+      // Dòng dưới ô xác nhận (mobile): báo khớp/chưa khớp ngay khi gõ, trước khi bấm lưu.
+      confirmMatch: 'Passwords match',
+      confirmNoMatch: "Doesn't match the new password yet",
       status: {
         empty: 'Enter a password',
         weak: 'Weak password',
@@ -426,6 +429,7 @@ export const messages = {
       required: 'Enter a new password.',
       tooShort: 'Use at least 8 characters.',
       tooLong: 'Keep it under 128 characters.',
+      sameAsCurrent: 'Choose a password different from your current one.',
     },
     currentPassword: {
       required: 'Enter your current password.',
@@ -2643,6 +2647,8 @@ export const messages = {
       slowServer: 'Waking the server — the first load can take up to a minute…',
       /** B2 — dòng đợt trên thẻ tour khi chưa có đợt đặt được. */
       datesOnRequest: 'Dates on request',
+      // Huy hiệu giảm giá trên góc ảnh thẻ tour (đợt style web 01/11) — cùng dạng chip "−N%" của web.
+      discountBadge: (percent: number) => `−${percent}%`,
       duration: { '1': '1 day', '2-3': '2–3 days', '4+': '4+ days' },
       price: {
         '<100': 'Under $100',
@@ -2657,6 +2663,8 @@ export const messages = {
       },
     },
     tourDetail: {
+      // Chip danh mục cạnh chip sao (rà 01/11): bấm mở Explore lọc sẵn danh mục đó.
+      categoryChipA11y: (name: string) => `See all ${name} tours`,
       overviewTitle: 'Overview',
       highlightsTitle: 'Highlights',
       itineraryTitle: 'Itinerary',
@@ -2848,9 +2856,11 @@ export const messages = {
         paidLabel: 'Paid',
         // T4 — khối nổi bật dưới câu hạn chót (`cancellationDeadline.short`).
         cancelByThenNote: (amount: string) => `Cancel by then and you get ${amount} back.`,
-        // T5 — booking PENDING vẫn giữ ghế nhưng chưa phải của khách.
+        // T5 — booking PENDING CHƯA giữ ghế: API chỉ trừ ghế khi thanh toán xong (bất biến #1).
+        // Câu cũ "Your seats are held until you pay" (chép từ bản vẽ) nói ngược, khác hẳn web và
+        // thông báo `paymentDue` — sửa 01/11 (rà A5).
         paymentNotFinishedTitle: 'Payment not finished',
-        paymentNotFinishedBody: 'Your seats are held until you pay. Finish now to confirm them.',
+        paymentNotFinishedBody: 'Seats aren’t held until you pay. Finish now to secure your place.',
         cancelThisBooking: 'Cancel this booking',
         // T5 — đợt đã đóng trong lúc khách chần chừ (`checkout` trả
         // DEPARTURE_NOT_AVAILABLE); chỉ còn nút bỏ booking.
@@ -2898,6 +2908,9 @@ export const messages = {
       departureOn: (date: string) => `Departure ${date}`,
       milestoneBookingConfirmed: 'Booking confirmed',
       milestonePaidInFull: 'Paid in full',
+      // Chú thích mốc "Paid in full": "8 Oct 2026, $35 by Card — Stripe".
+      milestonePaidCaption: (date: string, amount: string, provider: string) =>
+        `${date}, ${amount} by ${provider}`,
       milestoneDeparture: 'Departure',
       freeCancellationEnded: 'Free cancellation ended',
       getReady: 'Get ready',
@@ -2924,7 +2937,7 @@ export const messages = {
       dayOfTotal: (n: number, total: number) => `Day ${n} of ${total}`,
       endsOn: (date: string) => `Ends ${date}`,
       today: 'Today',
-      tomorrowDay: (n: number) => `Tomorrow · Day ${n}`,
+      tomorrowDay: (n: number) => `Tomorrow: Day ${n}`,
       tripNotesRow: 'Trip notes',
       tripNotesCaption: "What to bring, what's included",
       // P6 — chuyến đã kết thúc.

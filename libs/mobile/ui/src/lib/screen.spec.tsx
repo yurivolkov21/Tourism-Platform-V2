@@ -93,4 +93,24 @@ describe('Screen', () => {
 
     expect(screen.getByText('xin chào')).toBeTruthy();
   });
+
+  it('topo: vân đồng mức phủ kín cả khung màn; mặc định không có', async () => {
+    await renderWithTheme(
+      <Screen topo testID="screen">
+        <Text>trống</Text>
+      </Screen>,
+    );
+    expect(StyleSheet.flatten(screen.getByTestId('topo-pattern').props.style)).toMatchObject({
+      position: 'absolute',
+      top: 0,
+      bottom: 0,
+    });
+
+    await renderWithTheme(
+      <Screen>
+        <Text>có nội dung</Text>
+      </Screen>,
+    );
+    expect(screen.queryByTestId('topo-pattern')).toBeNull();
+  });
 });

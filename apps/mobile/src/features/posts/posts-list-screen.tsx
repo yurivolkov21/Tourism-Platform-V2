@@ -95,7 +95,12 @@ export function PostsListScreen({
   const cardWidth = useWindowDimensions().width - theme.spacing(12);
 
   return (
-    <Screen edges={SCREEN_EDGES_UNDER_HEADER} padded={false} scrollable={false}>
+    <Screen
+      topo={status === 'error' || (status === 'content' && items.length === 0)}
+      edges={SCREEN_EDGES_UNDER_HEADER}
+      padded={false}
+      scrollable={false}
+    >
       <View style={{ flex: 1 }}>
         <View
           style={{

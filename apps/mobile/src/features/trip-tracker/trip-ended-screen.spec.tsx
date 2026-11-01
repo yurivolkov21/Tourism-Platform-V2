@@ -19,7 +19,7 @@ function baseProps(overrides: Partial<TripEndedScreenProps> = {}): TripEndedScre
     reviewedLabel: 'You reviewed this trip',
     bookingDetailsRow: {
       label: 'Booking details',
-      caption: 'BK-001 · $1,377 paid',
+      caption: 'BK-001, $1,377 paid',
       onPress: jest.fn(),
     },
     whereToNextRow: { label: 'Where to next?', caption: 'Tours near Huế', onPress: jest.fn() },

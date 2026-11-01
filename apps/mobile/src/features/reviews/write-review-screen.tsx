@@ -257,7 +257,7 @@ export function WriteReviewScreen({
         <BookingTripCard
           imageUrl={imageUrl}
           title={tourTitle}
-          dateRangeLabel={[dateRangeLabel, bookingCode].filter((part) => part !== '').join(' · ')}
+          dateRangeLabel={[dateRangeLabel, bookingCode].filter((part) => part !== '').join(', ')}
           transformUrl={transformUrl}
         />
 
