@@ -8,6 +8,20 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-11-01 — Merge rà và sửa UI/UX mobile: trải nghiệm tour, tài khoản, đặt tour và bottom sheet (`32beeb69`)
+
+Nghĩa rà các luồng chính trên máy Android thật và sửa các lỗi UI/UX về checklist mật khẩu,
+nhãn nổi của ô nhập, header chi tiết tour, ngày khởi hành, thông báo trùng, copy giữ chỗ
+thanh toán và bàn phím trong bottom sheet. Thêm các tiện ích và test hồi quy liên quan,
+cùng bản ghi rà tại [`analysis/2026-11-01-mobile-ui-ux-audit.md`](analysis/2026-11-01-mobile-ui-ux-audit.md).
+
+**Review.** Không có lượt review độc lập. A4 (ảnh bìa bài viết thiếu) vẫn còn mở ở mức thấp;
+F3 cần build APK mới để xác nhận trên bản production. Không đổi API, migration, biến env hay
+dependency.
+
+Tests after: `pnpm gate:int` xanh trên máy Windows sau khi bật PostgreSQL local; CI lần đầu
+đỏ vì thiếu entry CHANGELOG này.
+
 ## 2026-10-29 — Merge gắn clip giới thiệu 70 giây vào README gốc: video phát ngay trên trang repo (`5b8f4c8`, `e74dff8`)
 
 Yuri hỏi 29/10 13:23 UTC có gắn được clip quảng cáo `nexora-quang-cao.mp4` (86 MB, 70 giây, 1080p 60 khung/giây) vào
