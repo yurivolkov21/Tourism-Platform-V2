@@ -29,7 +29,7 @@
     "@tourism/core": "workspace:*",
     "@tourism/i18n": "workspace:*",
     "@tourism/mobile-ui": "workspace:*",
-    "better-auth": "1.6.23",
+    "better-auth": "1.7.7",
     "expo": "~57.0.31",
     "expo-constants": "~57.0.22",
     "expo-dev-client": "~57.0.20",

@@ -45,7 +45,7 @@
     "@tourism/i18n": "workspace:*",
     "@tourism/tokens": "workspace:*",
     "ai": "7.0.118",
-    "better-auth": "1.7.15",
+    "better-auth": "1.7.16",
     "cloudinary": "^2.10.0",
     "fastify": "5.12.6",
     "pg": "8.22.0",
