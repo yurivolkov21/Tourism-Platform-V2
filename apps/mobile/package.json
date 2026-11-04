@@ -15,7 +15,7 @@
     "doctor": "expo-doctor"
   },
   "dependencies": {
-    "@better-auth/expo": "1.7.15",
+    "@better-auth/expo": "1.6.23",
     "@expo-google-fonts/archivo": "^0.4.2",
     "@expo-google-fonts/literata": "^0.4.3",
     "@expo/vector-icons": "^15.1.1",
@@ -29,7 +29,7 @@
     "@tourism/core": "workspace:*",
     "@tourism/i18n": "workspace:*",
     "@tourism/mobile-ui": "workspace:*",
-    "better-auth": "1.7.15",
+    "better-auth": "1.6.23",
     "expo": "~57.0.31",
     "expo-constants": "~57.0.22",
     "expo-dev-client": "~57.0.20",

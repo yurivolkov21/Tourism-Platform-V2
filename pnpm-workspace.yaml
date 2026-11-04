@@ -144,6 +144,18 @@ minimumReleaseAgeExclude:
 # về): @expo/config và jest-config, input là file cấu hình của mình. Advisory ghi
 # "vá ở >=4.3.2" nhưng đo 04/11 npm mới có tới 4.3.1.
 # GỠ KHI: `npm view deepmerge version` ra 4.3.2 trở lên.
+#
+# 04/11 — bốn GHSA của better-auth: GHSA-965c-763c-88jm (critical), GHSA-r4xp-prcw-77qf,
+# GHSA-q84f-53jg-9ppm (high), GHSA-44jh-23m7-hpcf (low). Server (apps/api) và
+# web, admin ĐÃ lên 1.7.15. Còn lại better-auth và @better-auth/expo 1.6.23 CHỈ
+# ở apps/mobile, mà mobile chỉ import phía client (`better-auth/react`,
+# `better-auth/client/plugins`, `@better-auth/expo/client`); cả bốn lỗ nằm ở
+# endpoint server (Magic Link, OAuth Proxy, Device authorization, rate limit lưu
+# DB). Mobile giữ 1.6 vì client 1.7 đổi API: storage của `expoClient` phải async
+# (`getItemAsync`/`setItemAsync`) và `getCookie()` trả Promise, kéo theo sửa
+# `cached-storage`, `withMobileAuth()` và mọi chỗ gọi, rồi build lại APK — không
+# làm sát ngày bảo vệ.
+# GỠ KHI: apps/mobile lên better-auth 1.7 (`pnpm why better-auth` không còn 1.6).
 auditConfig:
   ignoreGhsas:
     - GHSA-vcc3-ghjq-m6fr
@@ -156,6 +168,10 @@ auditConfig:
     - GHSA-3g3m-2fjr-6pw4
     - GHSA-rmxm-3fg6-px4f
     - GHSA-gcqx-w48m-w2h4
+    - GHSA-965c-763c-88jm
+    - GHSA-r4xp-prcw-77qf
+    - GHSA-q84f-53jg-9ppm
+    - GHSA-44jh-23m7-hpcf
 
 # Vá lỗ hổng bảo mật ở dependency bắc cầu (medium: middleware bypass qua
 # serveStatic). Đường đi: prisma CLI (devDep) → @prisma/dev → @hono/node-server.
@@ -482,7 +498,8 @@ overrides:
   # trong workspace giải từ gốc (resolvePeersFromWorkspaceRoot mặc định bật).
   # Nâng vitest về sau thì xem lại dòng đó.
   # Đợt vá 04/11 — NGOẠI LỆ freeze 31/10 (Yuri chốt 04/11). Phần override, scoped
-  # theo dải dính như các đợt trên; better-auth nâng thẳng ở bốn package.json.
+  # theo dải dính như các đợt trên; better-auth nâng thẳng ở package.json của
+  # api, web, admin (mobile giữ 1.6.23, xem auditConfig).
   #
   # node-forge <=1.4.0 (11 GHSA, 5 high: GHSA-7wch-p9px-956x, GHSA-jc66-7q78-782g,
   # GHSA-8hrf-8g6f-7xwp, GHSA-hqq3-7jhf-c5jx, GHSA-5x38-2vff-x55p; cùng GHSA-86w9 đã
