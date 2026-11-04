@@ -19,7 +19,7 @@
     "@tourism/i18n": "workspace:*",
     "@tourism/tokens": "workspace:*",
     "@tourism/ui": "workspace:*",
-    "better-auth": "1.6.23",
+    "better-auth": "1.7.15",
     "exceljs": "4.4.0",
     "lucide-react": "^1.25.0",
     "motion": "^12.23.0",

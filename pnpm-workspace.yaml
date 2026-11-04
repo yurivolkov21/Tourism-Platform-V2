@@ -97,11 +97,6 @@ minimumReleaseAgeExclude:
 # micromatch@4 ← metro/jest/expo (apps/mobile) và shadcn CLI. 3.0.3 (2024) là bản
 # cuối trên npm. Mẫu glob ở đây do chính config của mình viết.
 #
-# GHSA-86w9-cpqp-85rv (high — node-forge <=1.4.0, kiểm chữ ký RSA PKCS#1 v1.5
-# nhận DigestAlgorithm lồng thừa): @expo/cli dùng cho chứng chỉ ký code và HTTPS
-# của dev server. 1.4.0 là bản cuối; `pnpm audit` ghi "vá ở >=1.4.1" nhưng bản đó
-# không tồn tại.
-#
 # GHSA-ch52-4w7c-c8xp (high — http-cache-semantics <=4.2.0, `max-stale` trả lại
 # response đã bị zero của người dùng khác trong cache DÙNG CHUNG): @swc/cli →
 # bin-wrapper → got → cacheable-request, tức cache của một CLI chứ không phải
@@ -123,14 +118,44 @@ minimumReleaseAgeExclude:
 # viết theo — @expo/cli hỏng là hỏng luôn đường build APK. Bỏ qua GHSA này thì
 # audit không canh dòng 4.x nữa: override nói trên là lớp canh thay.
 # GỠ DÒNG NÀY KHI: `pnpm why zod` không còn bản 3.x nào, hoặc npm có bản vá 3.x.
+#
+# 04/11 — năm GHSA mà bản vá chỉ có ở major mới (hoặc chưa có). Không cái nào nằm
+# trên đường phục vụ request; đợt này là ngoại lệ freeze nên không ép nhảy major.
+#
+# GHSA-qr28-fpjm-wq7f (high — decode-uri-component <=0.5.0, DoS bậc hai): cùng
+# đường vào và cùng lý do không override như GHSA-vcc3 ở trên (bản vá 0.5.1 là ESM
+# thuần, query-string@7 `require()` nó). Chỉ làm đứng app trên máy người mở link.
+# GỠ KHI: Expo kéo query-string >=9.5.1 (khai `^0.5.0`, nhận được 0.5.1).
+#
+# GHSA-g3hv-75wg-m249 (moderate — minimatch <11.0.1, DoS do pattern glob nở ra):
+# minimatch 3/5/9/10 qua exceljs (admin), @swc/cli, react-email, @expo, jest. Mẫu
+# glob đều do config và mã của mình viết, exceljs không gọi glob với input người
+# dùng. Không có backport cho dòng cũ. GHSA-3g3m-2fjr-6pw4 (moderate — glob
+# >=9.0.0 <=14.0.1, AbortSignal hết hạn mà vẫn duyệt tiếp): glob 13 qua @expo/config
+# và react-email, chỉ chạy lúc build. Không có backport 13.x.
+# GỠ KHI: npm có bản vá cho đúng major đang dùng, hoặc các gói cha lên major mới.
+#
+# GHSA-rmxm-3fg6-px4f (moderate — @hono/node-server <2.1.3, `serveStatic` giải mã
+# path hai lần): prisma CLI (devDependency) → @prisma/dev; dòng 1.x vẫn bị ghim
+# theo quyết định 23/07 (xem override `@hono/node-server`).
+# GỠ KHI: @prisma/dev khai @hono/node-server 2.x.
+#
+# GHSA-gcqx-w48m-w2h4 (low — deepmerge <=4.3.1, prototype poisoning ở object trả
+# về): @expo/config và jest-config, input là file cấu hình của mình. Advisory ghi
+# "vá ở >=4.3.2" nhưng đo 04/11 npm mới có tới 4.3.1.
+# GỠ KHI: `npm view deepmerge version` ra 4.3.2 trở lên.
 auditConfig:
   ignoreGhsas:
     - GHSA-vcc3-ghjq-m6fr
     - GHSA-vfj7-8cjw-p6xm
-    - GHSA-86w9-cpqp-85rv
     - GHSA-ch52-4w7c-c8xp
     - GHSA-hp3w-g68c-fv3c
     - GHSA-mrhx-c7xc-m3w5
+    - GHSA-qr28-fpjm-wq7f
+    - GHSA-g3hv-75wg-m249
+    - GHSA-3g3m-2fjr-6pw4
+    - GHSA-rmxm-3fg6-px4f
+    - GHSA-gcqx-w48m-w2h4
 
 # Vá lỗ hổng bảo mật ở dependency bắc cầu (medium: middleware bypass qua
 # serveStatic). Đường đi: prisma CLI (devDep) → @prisma/dev → @hono/node-server.
@@ -272,7 +297,10 @@ overrides:
   # thấy trước khi Dependabot kịp mở alert; đường kéo @orpc/nest → express →
   # qs/body-parser. API không dùng express (adapter Fastify) nên qs là code
   # chết trong store, vá để sạch audit.
-  qs@<6.16.0: ^6.16.0
+  # 04/11 nới lên <6.16.1: GHSA-6pq8-jhm2-2vcw (moderate — `stringify` với
+  # `arrayFormat: 'comma'` ném TypeError). Đường kéo mới: style-dictionary (build
+  # tokens) → @bundled-es-modules/glob → url → qs. THAY dòng cũ chứ không thêm.
+  qs@<6.16.1: ^6.16.1
   # Đợt Dependabot 09/09 (3 alert medium): GHSA-crvj-82cr-hjcx (query parser đọc
   # tham số SAU fragment → lệch cache-key/proxy), GHSA-g6gw-c38x-mqfc
   # (parseBody() lồng nhau dấu chấm không giới hạn), GHSA-gqvv-2mrq-wpjv
@@ -453,3 +481,15 @@ overrides:
   # bằng `vite: 8.1.6` ở devDependencies của package.json gốc: peer của mọi gói
   # trong workspace giải từ gốc (resolvePeersFromWorkspaceRoot mặc định bật).
   # Nâng vitest về sau thì xem lại dòng đó.
+  # Đợt vá 04/11 — NGOẠI LỆ freeze 31/10 (Yuri chốt 04/11). Phần override, scoped
+  # theo dải dính như các đợt trên; better-auth nâng thẳng ở bốn package.json.
+  #
+  # node-forge <=1.4.0 (11 GHSA, 5 high: GHSA-7wch-p9px-956x, GHSA-jc66-7q78-782g,
+  # GHSA-8hrf-8g6f-7xwp, GHSA-hqq3-7jhf-c5jx, GHSA-5x38-2vff-x55p; cùng GHSA-86w9 đã
+  # gỡ khỏi auditConfig): @expo/cli (ký code, HTTPS dev server). 1.4.1 ra 27/10,
+  # cùng major nên không đổi API.
+  node-forge@<1.4.1: ^1.4.1
+  # systeminformation <5.33.16 (GHSA-3f7j-7jwc-fxfj high — chèn lệnh trên Windows;
+  # GHSA-7648-jmwf-vw7j, GHSA-4vjg-vx72-qq4g): shadcn CLI → @dotenvx/dotenvx, chỉ
+  # chạy khi gõ `shadcn` trên máy dev.
+  systeminformation@<5.33.16: ^5.33.16
