@@ -128,11 +128,13 @@ advisory dưới đây chưa vào DB chung của GitHub nên Dependabot và `pnp
 thấy. Lúc chúng vào DB thì có thể đã qua freeze 31/10: đọc lý do ở đây, dismiss alert
 `tolerable_risk`, thêm GHSA vào `auditConfig.ignoreGhsas` của `pnpm-workspace.yaml`.
 
-- **better-auth 1.6.23**, bản vá chỉ có ở dòng 1.7: GHSA-965c-763c-88jm (critical, cần
-  plugin Magic Link), GHSA-r4xp-prcw-77qf (high, cần plugin OAuth Proxy),
-  GHSA-q84f-53jg-9ppm (high, cần plugin `deviceAuthorization`) và GHSA-44jh-23m7-hpcf
-  (low, cần adapter Drizzle hoặc Kysely với rate limit lưu trong DB). API chỉ bật
-  `emailOTP` và Google, rate limit của Better Auth lưu trong RAM.
+- **better-auth 1.6.23 còn ở app mobile** (PR #79, 04/11): api, web, admin đã lên
+  1.7.15 và vá bốn GHSA (GHSA-965c-763c-88jm, GHSA-r4xp-prcw-77qf, GHSA-q84f-53jg-9ppm,
+  GHSA-44jh-23m7-hpcf, đều ở endpoint server). Mobile giữ 1.6.23 vì client 1.7 bắt
+  storage của `expoClient` phải async và `getCookie()` trả Promise: cần sửa
+  `lib/cached-storage`, `withMobileAuth()` cùng mọi chỗ gọi, rồi build lại APK. Bốn GHSA
+  nằm trong `ignoreGhsas` với điều kiện gỡ; alert Dependabot còn lại của bản này dismiss
+  "Vulnerable code is not actually used". Làm sau bảo vệ.
 - **@orpc/client, @orpc/server 1.14.15**: GHSA-4p2c-m292-ghmh (high, vá ở 1.15.2) chỉ dính
   `RPCHandler`; API phục vụ bằng OpenAPI qua `@orpc/nest`, web và admin dùng
   `OpenAPILink`. App mobile ghim 1.14.8 và cũng chỉ gọi qua `OpenAPILink`

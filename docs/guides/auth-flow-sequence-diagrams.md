@@ -5,7 +5,7 @@ khôi phục tài khoản chạy trên web khách, trang quản trị và app mo
 trình viên; bản dễ hiểu cho người không rành kỹ thuật ở
 [auth-flow-simple](auth-flow-simple.md).
 
-Thư viện dùng: **better-auth 1.6.23** (`apps/api`, `apps/web`, `apps/admin`, `apps/mobile`). Session kiểu cookie httpOnly (`better-auth.session_token`), không JWT/bearer cho web/admin, không có endpoint refresh riêng — cookie tự gia hạn qua `updateAge` của better-auth. App mobile dùng cùng Better Auth qua plugin `expoClient` (mục 3).
+Thư viện dùng: **better-auth 1.7.15** (`apps/api`, `apps/web`, `apps/admin`; từ 04/11, PR #79) và **1.6.23** ở `apps/mobile` (chỉ phía client, xem `docs/open-items.md`). Session kiểu cookie httpOnly (`better-auth.session_token`), không JWT/bearer cho web/admin, không có endpoint refresh riêng — cookie tự gia hạn qua `updateAge` của better-auth. App mobile dùng cùng Better Auth qua plugin `expoClient` (mục 3).
 
 ## Tổng quan nguồn
 

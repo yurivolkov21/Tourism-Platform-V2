@@ -8,6 +8,44 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-11-04 — Merge đợt vá Dependabot 04/11: better-auth 1.7.15 ở api, web, admin (ngoại lệ freeze) (`bb83b17d`, `d6099445`)
+
+Yuri hỏi 04/11 01:18 UTC về 22 alert Dependabot. `pnpm audit` trên `e8d1ed0` ra 24 GHSA ở 11 gói, đều công bố sau
+đợt vá 26/10 (PR #66). Soát đường vào: không lỗ nào với tới prod với config hiện tại (ba lỗ nặng của better-auth cần
+plugin Magic Link, OAuth Proxy hoặc `deviceAuthorization`, API chỉ bật `expo` và `emailOTP`; phần còn lại là công cụ
+dev, build, hoặc chỉ làm đứng app trên máy người mở link). Báo cáo ở `security/dependabot-2026-11-04.md` trong thư mục
+chung của project. Khuyến nghị là chờ sau bảo vệ; Yuri chọn nâng ngay 01:27 UTC, nên đây là **ngoại lệ freeze 31/10**
+(ADR-0001 AMEND 3) do Yuri chốt, không phải gỡ freeze. Nhánh `claude/project-thread-7clb3a`,
+[PR #79](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/79), session cloud. Không migration, không biến env,
+không đổi code chạy.
+
+- `bb83b17d` (fix): `better-auth` và `@better-auth/expo` 1.6.23 lên 1.7.15 (vá GHSA-965c-763c-88jm critical,
+  GHSA-r4xp-prcw-77qf, GHSA-q84f-53jg-9ppm, GHSA-44jh-23m7-hpcf). Override scoped `node-forge@<1.4.1` (11 GHSA qua
+  `@expo/cli`), `systeminformation@<5.33.16` (3 GHSA qua shadcn CLI), `qs` nới lên `<6.16.1` (thay dòng cũ). Gỡ
+  GHSA-86w9-cpqp-85rv khỏi `ignoreGhsas` vì node-forge đã có 1.4.1. Năm GHSA chỉ vá được bằng nhảy major hoặc chưa có
+  bản vá vào `ignoreGhsas` kèm điều kiện gỡ: decode-uri-component, minimatch, glob, @hono/node-server, deepmerge.
+- `d6099445` (fix): `apps/mobile` giữ 1.6.23. Client 1.7 đổi API của `expoClient` (storage async, `getCookie()` trả
+  Promise), typecheck mobile đỏ ba chỗ; sửa thì phải build lại APK. Mobile chỉ import phía client nên bốn GHSA của
+  better-auth vào `ignoreGhsas`; mục mở ở `open-items.md`.
+- Docs: `open-items.md` (mục better-auth đổi thành việc còn lại của mobile), `guides/auth-flow-sequence-diagrams.md`
+  (phiên bản đang dùng).
+
+**Review.** Không có lượt review độc lập. Tự kiểm: cột bảng của better-auth không đổi giữa 1.6.23 và 1.7.16 (so
+`getAuthTables` của `@better-auth/core`), nên không cần migration và rollback chỉ là revert. Client 1.6.23 (bản trong
+APK) gọi API 1.7.15 chạy local: đăng ký, gửi lại OTP, xác minh email, đăng nhập, `getSession`, đổi tên, đổi mật khẩu,
+đăng xuất, quên và đặt lại mật khẩu đều ok. Đăng nhập Google chưa test được ngoài môi trường thật. Push nhánh in số
+của main "22 vulnerabilities (5 critical, 10 high, 7 low)", lệch với `pnpm audit` (1 critical); thread không đọc được
+tab Dependabot nên chưa ghép được.
+
+**CÒN TREO (sau deploy):** test tay lại đăng nhập trên web (email, OTP, quên mật khẩu, Google), admin (Owner, Staff,
+tài khoản khoá) và APK hiện tại (email, Google native, đổi mật khẩu); hỏng thì revert hai commit trên. Dismiss các
+alert còn lại trên GitHub theo lý do trong báo cáo.
+
+Tests after (`gate:int` trong container cloud trên `d6099445`, API 1.7.15 sống ở :3001 như bước CI): unit 8801 (web
+2502, admin 2458, api 1477, mobile 1069, contract 833, mobile-ui 259, ui 65, i18n 63, core 49, tokens 26) và int 985;
+gate 28/28 task; Biome 2167 file; bundle mobile, `check-admin-prerender`, `check-rls` xanh; `pnpm audit
+--audit-level=low` exit 0. PR không thêm hay bớt test.
+
 ## 2026-11-01 — Merge rà và sửa UI/UX mobile: trải nghiệm tour, tài khoản, đặt tour và bottom sheet (`32beeb69`)
 
 Nghĩa rà các luồng chính trên máy Android thật và sửa các lỗi UI/UX về checklist mật khẩu,
