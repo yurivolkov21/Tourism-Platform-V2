@@ -8,6 +8,27 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-11-05 — Merge trang gốc API: `GET /` trả 200 thay cho 404 (`90aebec1`)
+
+Yuri hỏi 05/11 12:01 UTC: mở thẳng `https://api.nexora-travel.agency/` ra 404, người xem dễ tưởng API chết dù
+`/health` vẫn xanh. Nhánh `claude/project-thread-6adgjh`,
+[PR #82](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/82), session cloud. Không migration, không biến env,
+không đổi dependency (đúng freeze 31/10), không đụng `libs/shared/*`.
+
+- `90aebec1` (feat): `RootController` mới trong `HealthModule` trả JSON tĩnh `{ service: 'nexora-api', status: 'ok',
+  links: { health: '/health', liveness: '/api/health' } }`. `@Public()` vì AuthGuard fail-closed. Cố ý không chạm DB:
+  readiness vẫn là việc của `/health`. Không khai `@Throttle`: GET public đếm bucket đọc chung theo IP, HEAD không đếm.
+  API không có global prefix nên `/` không đụng route nào; Render `healthCheckPath` vẫn là `/health`.
+
+**Review.** Không có lượt review độc lập. Tự kiểm: test mới đỏ 404 ở ba ca khi chưa đăng ký controller, xanh 5/5 sau
+khi đăng ký; API build thật chạy ở :3001 trả `/` 200, `HEAD /` 200, `/health` 200, path lạ 404.
+
+**CÒN TREO (sau deploy):** mở `https://api.nexora-travel.agency/` thấy 200 và JSON trên; `/health` vẫn 200.
+
+Tests after (`gate:int` trong container cloud trên `90aebec1`, API sống ở :3001 như bước CI): unit 8806 (web 2502,
+admin 2458, api 1482, mobile 1069, contract 833, mobile-ui 259, ui 65, i18n 63, core 49, tokens 26) và int 985; gate
+28/28 task; Biome 2169 file; `check-admin-prerender`, `check-rls` xanh. PR thêm 5 test (`root.e2e.spec.ts`).
+
 ## 2026-11-04 — Merge đợt vá Dependabot 04/11: better-auth 1.7.15 ở api, web, admin (ngoại lệ freeze) (`bb83b17d`, `d6099445`)
 
 Yuri hỏi 04/11 01:18 UTC về 22 alert Dependabot. `pnpm audit` trên `e8d1ed0` ra 24 GHSA ở 11 gói, đều công bố sau
