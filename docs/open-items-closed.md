@@ -192,6 +192,11 @@ báo ở `bookings/[code]`, đọc cờ `departureCancelled`.~~
   02:59:48 UTC còn ra `clientIp` 172.68.211.10, IP biên của Cloudflare; lúc 03:09:58 UTC ra đúng IP
   đầu của `forwardedFor`. Thử từ 4G để tuỳ, ở buổi test tay. `PUBLIC_READ_THROTTLE_MODE` giữ `log`.
   Ghi ở entry CHANGELOG merge PR #67.*
+- ~~Cân nhắc siết thêm Build Filter của Render: thêm `apps/web/**`,
+  `apps/admin/**`, `apps/mobile/**` vào Ignored Paths~~. **Đừng thêm `libs/**`** —
+  máy chủ ăn `@tourism/contract` và `@tourism/core`.
+  *Đóng 09/11: đọc chỉ-đọc service API trên Render 09/11 thấy Ignored Paths đã gồm `docs/**`, `apps/web/**`,
+  `apps/admin/**`, `apps/mobile/**`, không có `libs/**`. Ghi ở entry CHANGELOG merge PR #83.*
 
 ## ~~Bug tiềm ẩn: `pending-sweep.service.ts` so sánh timestamp phụ thuộc timezone server~~ — đóng 14/10
 

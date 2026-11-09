@@ -8,6 +8,39 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-11-09 — Merge vá sau sự cố 08/11: web không thử lại 429 lúc chạy, tra phiên phía server có hạn 30 giây (`00fb93d8`, `a7c6d925`)
+
+Ngày 08/11 web, admin và API treo khoảng 06:41–18:29 và 20:11–03:23 giờ VN. Nguyên nhân là Render từ chối đánh thức
+API gói free: Vercel ghi 429 kèm `x-render-routing: hibernate-rate-limited` (08:11 và 08:57 UTC), log Render không có
+lần khởi động nào từ 07/11 23:41 tới 08/11 11:29 UTC và từ 13:11 tới 20:23 UTC. PR #82 không phải nguyên nhân (cùng
+commit chạy ổn 2,5 ngày, deploy tay lại thì lên trong 5 phút). Yuri hỏi 09/11 có xử lý được và thêm timeout không.
+Nhánh `claude/project-thread-a7wfg5`, [PR #83](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/83), session
+cloud. Không migration, không biến env, không đổi dependency (đúng freeze 31/10), không đụng API, mobile hay
+`libs/shared/*`. Quyết định ghi trước ở [ADR-0044 AMEND 3](adr/0044-prerender-retry-transient-api.md) (`032a3730`).
+
+- `00fb93d8` (fix web): lớp thử lại của ADR-0044 tách danh sách status theo pha. Lúc chạy bỏ 429, vì thử lại trong 1,6
+  giây không vượt được lệnh chặn của Render hay cửa sổ một phút của throttle API, chỉ bắn thêm request vào đúng cổng
+  đang chặn; lúc `next build` giữ 429 (lịch dài 30 giây). `transientStatusesFor(NEXT_PHASE)` chọn danh sách cùng khuôn
+  `retryDelaysFor`. `readServerSession` thêm `AbortSignal.timeout(30_000)`: hết hạn thì ném `SessionUnavailableError`
+  như mọi lỗi mạng khác (trang `/account` hiện error boundary, trang đăng nhập tuỳ chọn coi như khách).
+- `a7c6d925` (fix admin): `lookupServerSession` thêm `AbortSignal.timeout(30_000)`, hết hạn thì xếp vào `unreachable`.
+  Ngày 08/11 layout admin không có hạn nào nên chờ tới trần 300 giây của Vercel ("Task timed out after 300 seconds"
+  trên `/`, 6 lần). 30 giây phủ một lần đánh thức bình thường (AMEND 1 đo 24 giây).
+- Docs: `open-items.md` (đóng mục siết Build Filter của Render, mở G60).
+
+**Review.** Không có lượt review độc lập. Tự kiểm: test mới đỏ trước khi sửa (web 8 ca, admin 2 ca), xanh sau; lúc chạy
+429 trả ngay sau đúng một lượt fetch, lúc build 429 vẫn được thử lại.
+
+**CÒN TREO (sau deploy):** chỉ Vercel deploy lại web và admin. Render không build: đọc chỉ-đọc service 09/11 thấy
+Auto-Deploy bật lại và Build Filter bỏ qua `docs/**`, `apps/web/**`, `apps/admin/**`, `apps/mobile/**`. Hết treo trên
+prod chỉ kiểm được lần tới Render chặn đánh thức. Ngày demo: `/health` treo hay trả 429 thì bấm Manual Deploy trên
+Render, đừng chờ. Hỏi Render support về lệnh chặn (kèm `rndr-id` 5563841b-e0e8-46a1 lúc 08:11:42 UTC và
+be7d04b7-5aa3-417c lúc 08:57:56 UTC) là tuỳ Yuri.
+
+Tests after (`gate:int` trong container cloud trên `a7c6d925`, API sống ở :3001 như bước CI): unit 8817 (web 2511,
+admin 2460, api 1482, mobile 1069, contract 833, mobile-ui 259, ui 65, i18n 63, core 49, tokens 26) và int 985; gate
+28/28 task; Biome 2169 file; `check-admin-prerender`, `check-rls` xanh. PR thêm 11 test (web 9, admin 2).
+
 ## 2026-11-05 — Merge trang gốc API: `GET /` trả 200 thay cho 404 (`90aebec1`)
 
 Yuri hỏi 05/11 12:01 UTC: mở thẳng `https://api.nexora-travel.agency/` ra 404, người xem dễ tưởng API chết dù

@@ -1,12 +1,12 @@
 # Việc còn treo
 
-> Bản tóm tắt để điều hướng, cập nhật 27/10/2026. **Chỉ giữ việc còn mở**; mục đã
+> Bản tóm tắt để điều hướng, cập nhật 09/11/2026. **Chỉ giữ việc còn mở**; mục đã
 > đóng (gồm các mã G đã gạch) nằm ở [open-items-closed.md](open-items-closed.md),
 > chép nguyên văn. **Không phải nguồn sự thật** — chi tiết của từng mục sống ở
 > [CHANGELOG](CHANGELOG.md) (mục "CÒN TREO" của entry tương ứng) và ở
 > [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thuat.md).
 > **Đóng một mục:** ghi kết quả vào dòng (ngày, nhánh, commit), chuyển cả dòng
-> sang open-items-closed.md, rồi ghi vào CHANGELOG. **Mã G kế tiếp: G60.**
+> sang open-items-closed.md, rồi ghi vào CHANGELOG. **Mã G kế tiếp: G61.**
 >
 > Các mã như G41, F2 hay P5b-3 là mã nội bộ đặt trong lúc làm dự án; bảng giải
 > nghĩa ở [thuật ngữ](glossary.md#mã-nội-bộ-trong-tài-liệu). Link tới `plans/` và
@@ -108,9 +108,6 @@ Không còn việc nào chờ quyết (14/10).
   `tourism` theo mã mới. Máy dev cài lại 12/10 nên Docker dựng mới; chưa kiểm
   `tourism_ui` còn hay không.
 - Tắt tự-động-cập-nhật marketplace `claude-plugins-official` trước freeze 31/10.
-- Cân nhắc siết thêm Build Filter của Render: thêm `apps/web/**`,
-  `apps/admin/**`, `apps/mobile/**` vào Ignored Paths. **Đừng thêm `libs/**`** —
-  máy chủ ăn `@tourism/contract` và `@tourism/core`.
 
 ## Con số đã biết, không phải lỗi mới
 
@@ -177,3 +174,4 @@ deploy) nằm ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thu
 | G57 | `bookings.create` không chống trùng (`apps/api/src/modules/bookings/bookings.service.ts`): request quá 60 giây, mạng rớt giữa chừng hay khách mở hai tab vẫn ra hai đơn PENDING. Đơn PENDING không giữ ghế và lượt quét huỷ sau 60 phút, nhưng My bookings hiện hai đơn chờ trả, kèm hai phiên thanh toán. Ca hay gặp đã bịt ở PR #63: lượt ghi của trình duyệt chờ 60 giây, bằng trần của API (ADR-0044 AMEND 2). Cách nhỏ nhất: API trả lại đơn PENDING còn hạn của cùng khách, cùng chuyến, cùng số khách thay vì tạo mới (khoảng 30 dòng và int test, không migration). Cách đầy đủ: wizard sinh khoá chống trùng cho mỗi lượt đặt, API lưu theo cặp khách và khoá (contract thêm một trường tuỳ chọn, migration cho cột và unique index). Yuri chọn để sau buổi bảo vệ (thẻ quyết định 21/10, review F3-11; chi tiết ở entry CHANGELOG 26/10 của PR #63, vì báo cáo trong thư mục chung đã được dọn) |
 | G58 | App mobile chưa biết hai mã mới của `DELETE /api/account` ([ADR-0052 AMEND 2](adr/0052-admin-staff-tier.md)): Owner hay Staff bấm xoá ở Personal details thì API chặn đúng (403 `ACCOUNT_IS_OWNER` hoặc `ACCOUNT_IS_STAFF`, tài khoản còn nguyên) nhưng app in câu lỗi chung thay vì câu của web. Cách sửa: hai `case` trong `apps/mobile/src/features/account/delete-account-flow.ts` trỏ `messages.accountProfile.danger.errors.ownerAccount` và `.staffAccount` (câu web đang dùng), kèm test; muốn giống web hơn thì ẩn nút xoá theo role. Vùng của Nghĩa, cần APK mới. Mở 27/10 lúc merge PR #73 |
 | G59 | Hình logo "Slidex" (`apps/web/src/components/logo.tsx`, `apps/admin/src/components/logo.tsx`, favicon sinh từ đó, mark trong email, `apps/mobile/assets/splash-mark.png`) và hai hiệu ứng `apps/web/src/components/home/stats-slider.tsx`, `apps/web/src/components/motion/tilt-card.tsx` lấy từ mẫu miễn phí của PrebuiltUI. Điều khoản PrebuiltUI không cho phát hành lại mẫu, nên [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) ghi là không cấp quyền dùng lại theo MIT. Muốn hết rủi ro thì vẽ logo riêng và viết lại hai hiệu ứng; đổi logo đụng web, admin, email và app (cần APK mới), nên hợp lý nhất là sau buổi bảo vệ, Yuri quyết. Mở 27/10 lúc merge PR #74 |
+| G60 | Ba lượt `fetch` thẳng tới API trong `apps/web/src/lib/api/account.ts` (`/api/account/me`, `/api/auth/list-accounts`, `DELETE /api/account`) chưa có hạn chờ như `session.ts` ([ADR-0044 AMEND 3](adr/0044-prerender-retry-transient-api.md)). Thường không tới được vì `requireSession` chạy trước và đã có hạn 30 giây, nhưng API trả phiên rồi mới treo thì trang `/account` vẫn chờ tới trần 300 giây của Vercel (suy luận theo cơ chế 08/11, chưa đo). Cùng ngày 08/11 Vercel ghi `HeadersTimeout` trên `/login` và `/contact`, hai trang chỉ gọi API qua client oRPC (có hạn 20 giây); nguồn chưa xác định. Mở 09/11 lúc merge PR #83 |
