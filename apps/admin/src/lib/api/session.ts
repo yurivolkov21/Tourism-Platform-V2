@@ -54,6 +54,15 @@ export type SessionLookup =
   | { kind: 'unreachable' };
 
 /**
+ * Hạn chót một lượt tra phiên (ADR-0044 AMEND 3). Ngày 08/11 Render giữ kết nối
+ * trong lúc định đánh thức API mà không bao giờ đánh thức được, nên layout quay
+ * tới trần 300 giây của Vercel. 30 giây phủ một lần đánh thức bình thường
+ * (AMEND 1 đo 24 giây): đây là lượt đầu tiên chạm API vừa ngủ dậy, nên KHÔNG
+ * dùng hạn 10 giây của client oRPC. Hết hạn thì xếp vào `unreachable`.
+ */
+export const SESSION_LOOKUP_TIMEOUT_MS = 30_000;
+
+/**
  * Tra phiên server-side — fetch thẳng get-session kèm cookie forward,
  * `no-store` (data per-user), React `cache()` dedupe trong một render.
  * KHÔNG throw: mọi lỗi phân loại vào `SessionLookup` để tầng gọi tự quyết.
@@ -69,6 +78,7 @@ export const lookupServerSession = cache(async (): Promise<SessionLookup> => {
     const response = await fetch(`${origin}/api/auth/get-session`, {
       headers: { cookie: cookieHeader },
       cache: 'no-store',
+      signal: AbortSignal.timeout(SESSION_LOOKUP_TIMEOUT_MS),
     });
     // get-session KHÔNG 401 khi thiếu cookie (trả body `null` với status 200
     // — xem shape ở trên), nên một status ngoài 2xx nghĩa là API đang hỏng

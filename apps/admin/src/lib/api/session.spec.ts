@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getServerSession, lookupServerSession } from './session';
+import { getServerSession, lookupServerSession, SESSION_LOOKUP_TIMEOUT_MS } from './session';
 
 /**
  * Phân loại kết quả tra phiên (vòng vá review F6): `none` (API trả lời:
@@ -54,7 +54,28 @@ describe('lookupServerSession', () => {
     expect(fetchMock).toHaveBeenCalledWith('http://api.test/api/auth/get-session', {
       headers: { cookie: 'better-auth.session_token=abc' },
       cache: 'no-store',
+      signal: expect.any(AbortSignal),
     });
+  });
+
+  // ADR-0044 AMEND 3: 08/11 Render giữ kết nối trong lúc định đánh thức API mà
+  // không bao giờ đánh thức được, layout quay tới trần 300 giây của Vercel.
+  it('có hạn 30 giây: signal truyền cho fetch chính là AbortSignal.timeout(30_000)', async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+    fetchMock.mockResolvedValue(okResponse(null));
+
+    await lookupServerSession();
+
+    expect(SESSION_LOOKUP_TIMEOUT_MS).toBe(30_000);
+    expect(timeoutSpy).toHaveBeenCalledWith(SESSION_LOOKUP_TIMEOUT_MS);
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(init.signal).toBe(timeoutSpy.mock.results[0]?.value);
+    timeoutSpy.mockRestore();
+  });
+
+  it('hết hạn (TimeoutError) → unreachable, KHÔNG phải none', async () => {
+    fetchMock.mockRejectedValue(new DOMException('The operation was aborted', 'TimeoutError'));
+    expect(await lookupServerSession()).toEqual({ kind: 'unreachable' });
   });
 
   it('API trả lời "không có phiên" (body null) → none — đây mới là ca mời đăng nhập', async () => {
