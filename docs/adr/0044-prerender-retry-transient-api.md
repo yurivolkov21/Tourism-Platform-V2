@@ -197,3 +197,56 @@ tour (L3), ghi thành đề xuất trong báo cáo F3.
 - **Chỉ nới cho `bookings.create`:** lượt huỷ đơn (hoàn tiền), mở lại thanh toán, gửi
   đánh giá, gửi yêu cầu tour riêng đều cùng một kiểu lỗi; một luật theo method gọn hơn
   một danh sách endpoint phải nhớ cập nhật.
+
+## AMEND 3 — Lúc chạy không thử lại 429, tra phiên phía server có hạn 30 giây (09/11)
+
+Sự cố 08/11: API, admin và web treo nhiều giờ dù không có commit nào hỏng. Đo được:
+
+- Lớp định tuyến của Render từ chối đánh thức service free đang ngủ: trả 429 kèm header
+  `x-render-routing: hibernate-rate-limited` (bắt được trong lỗi runtime của web trên
+  Vercel lúc 08:11 và 08:57 UTC). Log Render không có instance nào khởi động từ 07/11
+  23:41 UTC tới 08/11 11:29 UTC, rồi lại từ 13:11 tới 20:23 UTC. Chỉ một lần Manual
+  Deploy mới dựng được instance trong lúc bị chặn. Render không công bố ngưỡng của lệnh
+  chặn này và không gửi `Retry-After`.
+- Web vẫn thử lại 429 hai lượt theo §1.3, mà mỗi trang gọi nhiều endpoint, nên mỗi lượt
+  vào web lúc API ngủ thành một chùm request tới đúng cổng đang chặn. Chùm request có
+  kéo dài lệnh chặn hay không là suy đoán; chắc chắn là thử lại trong 1,6 giây không vượt
+  được một lệnh chặn kéo dài hàng giờ, cũng không vượt được cửa sổ một phút của bucket
+  đọc 300 lượt theo IP của chính API (`apps/api/src/config/throttle.ts`).
+- Admin quay tới trần 300 giây của Vercel ("Task timed out after 300 seconds" trên `/`,
+  6 lần): `lookupServerSession` gọi `get-session` không đặt hạn, nên khi Render giữ kết
+  nối trong lúc định đánh thức, trang không bao giờ trả lời. `readServerSession` của web
+  cùng khuôn. Hai hàm này không đi qua client oRPC nên §2 không phủ (AMEND 2 đã ghi).
+
+**Quyết định:**
+
+1. **Lúc chạy** (ISR, SSR, route handler), 429 rời danh sách thử lại của §1.3. **Lúc
+   build** giữ nguyên danh sách cũ cùng lịch 30 giây của AMEND 1: không ai đứng chờ, và
+   nếu prerender bắn hàng loạt vượt bucket đọc theo IP của API thì chờ theo lịch dài là
+   qua. Hàm `transientStatusesFor(phase)` chọn danh sách một lần lúc nạp module, cùng
+   khuôn `retryDelaysFor`.
+2. **Tra phiên phía server** của web và admin có hạn 30 giây (`SESSION_LOOKUP_TIMEOUT_MS`).
+   Hết hạn được xếp như mọi lỗi mạng đã có: admin trả `unreachable`, web ném
+   `SessionUnavailableError`. 30 giây phủ một lần đánh thức bình thường (AMEND 1 đo 24
+   giây) và vẫn ngắn hơn mười lần trần 300 giây của Vercel.
+
+**Hệ quả:**
+
+- Khi Render chặn, mỗi lượt vào web chỉ gửi một request cho mỗi endpoint thay vì ba.
+- Admin khi API không trả lời: sau 30 giây layout coi như không có phiên và chuyển về
+  `/login`, đúng hành vi `getServerSession` đã có cho ca `unreachable`, thay vì quay 5
+  phút rồi lỗi.
+- Một lần đánh thức chậm hơn 30 giây làm admin chuyển về `/login` dù phiên còn; tải lại
+  sau khi API dậy là vào được. Chấp nhận, vì đổi lại là không bao giờ quay 5 phút.
+
+**Đã cân và bỏ:**
+
+- **Chỉ bỏ 429 mang header `hibernate-rate-limited`:** 429 do throttle của API lúc chạy
+  cũng không qua được trong 1,6 giây; một luật theo status gọn hơn soi header.
+- **Bỏ 429 cả lúc build:** chưa có lượt build nào đo được dính cổng chặn của Render, còn
+  throttle của API lúc prerender là đúng ca mà lịch dài cứu được.
+- **Hạn 10 giây như client oRPC của admin:** tra phiên là lượt đầu tiên chạm API vừa
+  ngủ dậy; 10 giây biến mọi lần đánh thức bình thường thành một lần chuyển về `/login`.
+- **Giữ API thức để khỏi phải đánh thức:** cần gói trả phí hoặc ping giữ thức. Nhân
+  viên Render gọi việc giữ service free thức là lạm dụng, còn mỗi giờ thức tốn khoảng
+  12 đến 15 MB băng thông của hạn 5 GB một tháng.

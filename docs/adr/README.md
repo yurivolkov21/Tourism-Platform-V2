@@ -54,7 +54,7 @@ bị loại và cái giá phải trả. Bản đồ chung của tài liệu ở 
 | [0016](0016-web-data-layer.md) | Tầng dữ liệu web: gọi API qua oRPC, dựng ở server trước, cache theo thẻ và ISR | 4 lần bổ sung |
 | [0018](0018-web-map-library.md) | Bản đồ trang `/contact`: maplibre-gl và OpenFreeMap | 2 lần bổ sung |
 | [0022](0022-tour-detail-tabs.md) | Trang chi tiết tour chia thành 5 tab | |
-| [0044](0044-prerender-retry-transient-api.md) | Bước dựng sẵn trang (*prerender*) thử lại khi API lỗi thoáng qua | 2 lần bổ sung; lần 2 (20/10/2026): thao tác ghi từ trình duyệt chờ bằng trần thời gian của API |
+| [0044](0044-prerender-retry-transient-api.md) | Bước dựng sẵn trang (*prerender*) thử lại khi API lỗi thoáng qua | 3 lần bổ sung; lần 3 (09/11/2026): lúc chạy không thử lại 429, tra phiên phía server có hạn 30 giây |
 | [0058](0058-tour-card-next-departure-badges-rating-sort.md) | Thẻ tour hiện đợt khởi hành kế tiếp còn đặt được và nhãn (*badge*); sắp theo điểm đánh giá; bộ lọc giá, thời lượng, độ khó nằm ở web | |
 
 ## Màu sắc và giao diện chung
