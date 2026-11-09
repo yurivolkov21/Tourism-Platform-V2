@@ -57,6 +57,15 @@ export class SessionUnavailableError extends Error {
 }
 
 /**
+ * Hạn chót một lượt tra phiên phía server (ADR-0044 AMEND 3). Hàm này không đi
+ * qua client oRPC nên không có hạn 20 giây của §2: ngày 08/11 Render giữ kết nối
+ * trong lúc định đánh thức API mà không bao giờ đánh thức được, nên trang chờ tới
+ * trần 300 giây của Vercel. 30 giây phủ một lần đánh thức bình thường (AMEND 1 đo
+ * 24 giây). Hết hạn thì ném `SessionUnavailableError` như mọi lỗi mạng khác.
+ */
+export const SESSION_LOOKUP_TIMEOUT_MS = 30_000;
+
+/**
  * Đọc session server-side (ADR-0017 §3) — fetch THẲNG `GET /api/auth/
  * get-session` (endpoint của Better Auth, KHÔNG qua oRPC contract vì đây
  * không phải procedure của contract) kèm cookie forward từ `next/headers`,
@@ -75,6 +84,7 @@ const readServerSession = cache(async (): Promise<SessionUser | null> => {
     const response = await fetch(`${apiOrigin()}/api/auth/get-session`, {
       headers: { cookie: cookieHeader },
       cache: 'no-store',
+      signal: AbortSignal.timeout(SESSION_LOOKUP_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error(`get-session ${response.status}`);
     data = (await response.json()) as GetSessionApiResponse | null;

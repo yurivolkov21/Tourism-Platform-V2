@@ -241,6 +241,33 @@ describe('requireSession', () => {
     await expect(requireSession('/account')).rejects.toBe(dynamicUsage);
   });
 
+  // ADR-0044 AMEND 3: 08/11 Render giữ kết nối trong lúc định đánh thức API mà không bao giờ
+  // đánh thức được; thiếu hạn thì trang chờ tới trần 300 giây của Vercel.
+  it('có hạn 30 giây: signal truyền cho fetch chính là AbortSignal.timeout(30_000)', async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => null });
+    vi.stubGlobal('fetch', fetchMock);
+    const { getServerSession, SESSION_LOOKUP_TIMEOUT_MS } = await freshSessionModule();
+
+    await getServerSession();
+
+    expect(SESSION_LOOKUP_TIMEOUT_MS).toBe(30_000);
+    expect(timeoutSpy).toHaveBeenCalledWith(SESSION_LOOKUP_TIMEOUT_MS);
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(init.signal).toBe(timeoutSpy.mock.results[0]?.value);
+    timeoutSpy.mockRestore();
+  });
+
+  it('hết hạn (TimeoutError) → ném SessionUnavailableError, KHÔNG redirect /login', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new DOMException('The operation was aborted', 'TimeoutError')),
+    );
+    const { requireSession, SessionUnavailableError } = await freshSessionModule();
+    await expect(requireSession('/account')).rejects.toBeInstanceOf(SessionUnavailableError);
+    expect(redirectMock).not.toHaveBeenCalled();
+  });
+
   it('lỗi mạng hoặc body không phải JSON → ném SessionUnavailableError, KHÔNG redirect', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('fetch failed')));
     const first = await freshSessionModule();

@@ -13,19 +13,40 @@
  */
 
 /**
- * Status đáng thử lại. Gồm cả dải 52x của Cloudflare: 520 (origin trả lỗi lạ),
- * 521 (origin từ chối), 522 (hết hạn kết nối), 523 (không tới được origin),
- * 524 (origin trả lời quá chậm) — đúng những gì đứng giữa Vercel và Render.
+ * Status đáng thử lại LÚC CHẠY (ISR, SSR, route handler). Gồm cả dải 52x của
+ * Cloudflare: 520 (origin trả lỗi lạ), 521 (origin từ chối), 522 (hết hạn kết
+ * nối), 523 (không tới được origin), 524 (origin trả lời quá chậm) — đúng những
+ * gì đứng giữa Vercel và Render.
  *
  * KHÔNG có 404 và 4xx nghiệp vụ: `POST_NOT_FOUND` phải tới được nhánh
  * `notFound()` của page, thử lại nó là ba lần chậm rồi vẫn 404.
+ *
+ * KHÔNG có 429 (ADR-0044 AMEND 3): ngày 08/11 Render trả 429
+ * `x-render-routing: hibernate-rate-limited` và từ chối đánh thức API hàng giờ
+ * liền. Thử lại trong 1,6 giây không vượt được lệnh chặn ấy, cũng không vượt
+ * được cửa sổ một phút của throttle phía API, chỉ bắn thêm request vào đúng cổng
+ * đang chặn.
  */
-const TRANSIENT_STATUS: ReadonlySet<number> = new Set([
-  408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524,
+export const RUNTIME_TRANSIENT_STATUS: ReadonlySet<number> = new Set([
+  408, 425, 500, 502, 503, 504, 520, 521, 522, 523, 524,
 ]);
 
-export function isTransientStatus(status: number): boolean {
-  return TRANSIENT_STATUS.has(status);
+/**
+ * Status đáng thử lại LÚC `next build`: danh sách lúc chạy cộng 429. Lúc build
+ * không ai đứng chờ và lịch dài 30 giây (AMEND 1) đủ để qua cửa sổ một phút của
+ * bucket đọc theo IP của API khi prerender bắn hàng loạt.
+ */
+export const BUILD_TRANSIENT_STATUS: ReadonlySet<number> = new Set([
+  ...RUNTIME_TRANSIENT_STATUS,
+  429,
+]);
+
+/** Mặc định là danh sách lúc chạy: thiếu tham số thì chọn phía thử lại ít hơn. */
+export function isTransientStatus(
+  status: number,
+  statuses: ReadonlySet<number> = RUNTIME_TRANSIENT_STATUS,
+): boolean {
+  return statuses.has(status);
 }
 
 /**
@@ -72,6 +93,11 @@ export function retryDelaysFor(phase: string | undefined): readonly number[] {
   return phase === PHASE_PRODUCTION_BUILD ? BUILD_RETRY_DELAYS_MS : RETRY_DELAYS_MS;
 }
 
+/** Chọn danh sách status đáng thử lại theo pha, cùng khuôn `retryDelaysFor` (AMEND 3). */
+export function transientStatusesFor(phase: string | undefined): ReadonlySet<number> {
+  return phase === PHASE_PRODUCTION_BUILD ? BUILD_TRANSIENT_STATUS : RUNTIME_TRANSIENT_STATUS;
+}
+
 /** Hạn mỗi lượt gọi: server rộng hơn vì prerender bắn hàng loạt xuyên châu lục. */
 export const SERVER_TIMEOUT_MS = 20_000;
 export const BROWSER_TIMEOUT_MS = 10_000;
@@ -114,10 +140,13 @@ export function createRetryingFetch(deps: {
   sleep: (ms: number) => Promise<void>;
   isServer: () => boolean;
   delaysMs?: readonly number[];
+  /** Status đáng thử lại; thiếu thì dùng danh sách lúc chạy (không có 429). */
+  transientStatuses?: ReadonlySet<number>;
   /** Nhận một dòng mỗi lần SẮP thử lại; lượt cuối không ghi vì lỗi đã đi tiếp lên Next. */
   log?: (line: string) => void;
 }): FetchLike {
   const delays = deps.delaysMs ?? RETRY_DELAYS_MS;
+  const statuses = deps.transientStatuses ?? RUNTIME_TRANSIENT_STATUS;
   const attempts = delays.length + 1;
 
   return async (request, init) => {
@@ -136,7 +165,7 @@ export function createRetryingFetch(deps: {
       let failure: unknown;
       try {
         const response = await deps.fetch(request, init);
-        if (!isTransientStatus(response.status) || delay === undefined) return response;
+        if (!isTransientStatus(response.status, statuses) || delay === undefined) return response;
         failure = response;
       } catch (error) {
         if (!isTransientError(error) || delay === undefined) throw error;

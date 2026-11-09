@@ -4,6 +4,7 @@ import {
   BROWSER_TIMEOUT_MS,
   BROWSER_WRITE_TIMEOUT_MS,
   BUILD_RETRY_DELAYS_MS,
+  BUILD_TRANSIENT_STATUS,
   createRetryingFetch,
   isTransientError,
   isTransientStatus,
@@ -11,6 +12,7 @@ import {
   requestTimeoutMs,
   retryDelaysFor,
   SERVER_TIMEOUT_MS,
+  transientStatusesFor,
 } from './retry-fetch';
 
 /**
@@ -31,7 +33,11 @@ const post = () =>
 /** Bộ đếm lượt ngủ và dòng log để khẳng định đúng nhịp giãn của ADR. */
 function harness(
   responder: (attempt: number) => Promise<Response>,
-  opts: { isServer?: boolean; delaysMs?: readonly number[] } = {},
+  opts: {
+    isServer?: boolean;
+    delaysMs?: readonly number[];
+    transientStatuses?: ReadonlySet<number>;
+  } = {},
 ) {
   const slept: number[] = [];
   const logged: string[] = [];
@@ -50,6 +56,7 @@ function harness(
       logged.push(line);
     },
     ...(opts.delaysMs ? { delaysMs: opts.delaysMs } : {}),
+    ...(opts.transientStatuses ? { transientStatuses: opts.transientStatuses } : {}),
   });
   return { run, fetchMock, slept, logged };
 }
@@ -100,13 +107,41 @@ describe('requestTimeoutMs (ADR-0044 §2 + AMEND 2)', () => {
   });
 });
 
-describe('isTransientStatus', () => {
-  it.each([408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524])(
-    '%i là tạm thời',
-    (status) => {
-      expect(isTransientStatus(status)).toBe(true);
+/** Danh sách đã sắp để so bằng `toEqual`: Set không có thứ tự đáng tin khi in lỗi. */
+const sorted = (statuses: ReadonlySet<number>) => [...statuses].sort((a, b) => a - b);
+
+describe('transientStatusesFor (AMEND 3)', () => {
+  it('lúc next build giữ nguyên danh sách cũ, có 429', () => {
+    expect(sorted(transientStatusesFor(PHASE_PRODUCTION_BUILD))).toEqual([
+      408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524,
+    ]);
+  });
+
+  // 08/11: Render trả 429 `hibernate-rate-limited` hàng giờ liền; thử lại trong
+  // 1,6 giây không vượt được, chỉ bắn thêm request vào đúng cổng đang chặn.
+  it.each([undefined, '', 'phase-production-server', 'phase-development-server'])(
+    'pha %s bỏ 429, giữ mọi status tạm thời còn lại',
+    (phase) => {
+      expect(sorted(transientStatusesFor(phase))).toEqual([
+        408, 425, 500, 502, 503, 504, 520, 521, 522, 523, 524,
+      ]);
     },
   );
+});
+
+describe('isTransientStatus', () => {
+  it.each([408, 425, 500, 502, 503, 504, 520, 521, 522, 523, 524])(
+    '%i là tạm thời ở cả lúc chạy lẫn lúc build',
+    (status) => {
+      expect(isTransientStatus(status)).toBe(true);
+      expect(isTransientStatus(status, BUILD_TRANSIENT_STATUS)).toBe(true);
+    },
+  );
+
+  it('429: mặc định (lúc chạy) KHÔNG tạm thời, danh sách build thì có', () => {
+    expect(isTransientStatus(429)).toBe(false);
+    expect(isTransientStatus(429, BUILD_TRANSIENT_STATUS)).toBe(true);
+  });
 
   // 404 phải đi thẳng: `POST_NOT_FOUND` cần tới được nhánh notFound() của page,
   // thử lại nó là ba lần chậm rồi vẫn 404 (ADR-0044 §Quyết định 1.3).
@@ -171,6 +206,35 @@ describe('createRetryingFetch', () => {
     });
     await expect(run(get(), {})).rejects.toBe(boom);
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  // AMEND 3: đúng response Render trả ngày 08/11 (thân và header chép từ lỗi
+  // runtime của web trên Vercel).
+  it('lúc chạy, 429 của cổng ngủ đông Render trả ngay, KHÔNG thử lại, KHÔNG ghi log', async () => {
+    const { run, fetchMock, slept, logged } = harness(
+      async () =>
+        new Response('Too Many Requests\n', {
+          status: 429,
+          headers: { 'x-render-routing': 'hibernate-rate-limited' },
+        }),
+    );
+    const out = await run(get(), {});
+    expect(out.status).toBe(429);
+    expect(out.headers.get('x-render-routing')).toBe('hibernate-rate-limited');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(slept).toEqual([]);
+    expect(logged).toEqual([]);
+  });
+
+  it('lúc build, 429 vẫn thử lại theo lịch dài rồi lấy được 200', async () => {
+    const { run, fetchMock, slept } = harness(async (n) => res(n === 1 ? 429 : 200), {
+      delaysMs: BUILD_RETRY_DELAYS_MS,
+      transientStatuses: BUILD_TRANSIENT_STATUS,
+    });
+    const out = await run(get(), {});
+    expect(out.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(slept).toEqual([BUILD_RETRY_DELAYS_MS[0]]);
   });
 
   it('404 KHÔNG thử lại', async () => {
