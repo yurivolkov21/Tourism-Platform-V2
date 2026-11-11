@@ -8,6 +8,32 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-11-11 — Merge prompt trợ lý chat nói rõ hỗ trợ tiếng Anh và tiếng Việt (`d375c786`)
+
+Yuri thử trên production 11/11: sau một đoạn chat bằng tiếng Anh, hỏi "bạn nói tiếng việt được không" thì Nexora
+Concierge trả lời bằng tiếng Việt rằng "Xin lỗi, tôi chỉ hỗ trợ tiếng Anh". Prompt cũ chỉ có "Reply in the language the
+visitor writes in; default to English", không nêu tiếng Việt; câu hỏi về ngôn ngữ không nói tới tour nên model (Haiku
+4.5) nhiều khả năng áp luật Scope "decline politely in one sentence" rồi tự bịa lý do (suy luận từ khuôn câu trả lời,
+chưa đo trên model thật). Nhánh `fix/chat-vietnamese-q78srs`,
+[PR #84](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/84), session cloud. Không migration, không biến env,
+không đổi dependency (đúng freeze 31/10), không đụng web, admin, mobile hay `libs/shared/*`.
+
+- `d375c786` (fix api): mục Style của `chat-prompt.ts` thay một dòng bằng hai: trợ lý trò chuyện bằng tiếng Anh và tiếng
+  Việt (và ngôn ngữ khác khách viết), trả lời theo ngôn ngữ của tin nhắn mới nhất, mặc định tiếng Anh; hỏi trợ lý nói
+  được tiếng gì không phải câu ngoài lề; không bao giờ nói chỉ hỗ trợ tiếng Anh. Luật Scope giữ nguyên. Spec P6 §2d ghi
+  lần sửa.
+
+**Review.** Không có lượt review độc lập. Tự kiểm: 5 test mới đỏ trên prompt cũ (5 failed, 27 passed), xanh 32/32 sau
+khi sửa.
+
+**CÒN TREO (sau deploy):** Render build lại API (đổi `apps/api/**`); `/health` treo hay trả 429 thì bấm Manual Deploy.
+Thử lại trên production: hỏi vài câu tiếng Anh rồi gõ "bạn nói tiếng việt được không"; mong đợi trợ lý nói được tiếng
+Việt và tiếp tục giúp. CI dùng model giả nên chỉ lần thử này chứng minh được hành vi thật.
+
+Tests after (`gate:int` trong container cloud trên `d375c786`, API sống ở :3001 như bước CI): unit 8821 (web 2511,
+admin 2460, api 1486, mobile 1069, contract 833, mobile-ui 259, ui 65, i18n 63, core 49, tokens 26) và int 985; gate
+28/28 task; Biome 2169 file; `check-admin-prerender`, `check-rls` xanh. PR thêm 4 test ở api.
+
 ## 2026-11-09 — Merge vá sau sự cố 08/11: web không thử lại 429 lúc chạy, tra phiên phía server có hạn 30 giây (`00fb93d8`, `a7c6d925`)
 
 Ngày 08/11 web, admin và API treo khoảng 06:41–18:29 và 20:11–03:23 giờ VN. Nguyên nhân là Render từ chối đánh thức
