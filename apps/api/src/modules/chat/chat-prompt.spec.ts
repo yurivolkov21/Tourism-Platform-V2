@@ -148,9 +148,23 @@ describe('buildInstructions', () => {
     ['link nội bộ, không bịa URL', 'Never invent URLs'],
     ['đủ thông tin trước submitEnquiry', 'name, email and message before calling submitEnquiry'],
     ['báo trước thẻ xác nhận', 'confirmation card'],
-    ['ngôn ngữ của khách', 'Reply in the language the visitor writes in'],
+    ['nói được tiếng Anh và tiếng Việt', 'You chat in English and Vietnamese'],
+    ['ngôn ngữ của tin nhắn mới nhất', 'Reply in the language of their latest message'],
     ['mặc định tiếng Anh', 'default to English'],
+    ['hỏi về ngôn ngữ không phải câu ngoài lề', 'which languages you speak is not off-topic'],
+    ['không tự nhận chỉ biết tiếng Anh', 'Never say you only speak or support English'],
   ])('có luật: %s', (_rule, phrase) => {
     expect(base).toContain(phrase);
+  });
+
+  // Lỗi 11/11 trên production: hỏi "bạn nói tiếng việt được không" thì model áp luật
+  // ngoài lề và tự nhận chỉ hỗ trợ tiếng Anh. Luật ngôn ngữ nằm ngoài khối Account nên
+  // phải có mặt ở cả hai biến thể prompt.
+  it('luật ngôn ngữ giống nhau dù khách đăng nhập hay chưa', () => {
+    const signedIn = buildInstructions({ now, destinations, categories, signedIn: true });
+    for (const prompt of [base, signedIn]) {
+      expect(prompt).toContain('You chat in English and Vietnamese');
+      expect(prompt).toContain('Never say you only speak or support English');
+    }
   });
 });

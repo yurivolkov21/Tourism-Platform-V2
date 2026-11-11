@@ -230,7 +230,12 @@ Dựng bằng một hàm thuần (test được), gồm:
   ngày riêng) là enquiry; chỉ hỏi phần còn thiếu; có tên và email thì gọi `submitEnquiry`
   ngay trong lượt ấy thay vì hỏi khách xác nhận bằng chữ, vì thẻ là chỗ xác nhận; tháng hay
   khoảng ngày ghi vào lời nhắn, `travelDate` chỉ cho một ngày cụ thể.
-- Ngôn ngữ: trả lời theo ngôn ngữ khách viết, mặc định tiếng Anh.
+- Ngôn ngữ: trả lời theo ngôn ngữ khách viết, mặc định tiếng Anh. Sửa 11/11 (thử trên
+  production: khách hỏi "bạn nói tiếng việt được không" thì model trả lời bằng tiếng Việt
+  rằng chỉ hỗ trợ tiếng Anh, nhiều khả năng do áp luật câu ngoài lề rồi tự bịa lý do):
+  prompt nói rõ trợ lý trò chuyện bằng tiếng Anh và tiếng Việt (và ngôn ngữ khác khách
+  viết), trả lời theo ngôn ngữ của tin nhắn mới nhất; hỏi trợ lý nói được tiếng gì không
+  phải câu ngoài lề; không bao giờ nói chỉ hỗ trợ tiếng Anh.
 - Ngữ cảnh: ngày hôm nay theo lịch Việt Nam (cùng cách tính "hôm nay" của web); danh
   sách slug điểm đến và danh mục đang bật (đọc qua service, cache ngắn); tour đang xem
   (`tourSlug`) nếu có. Sửa 19/10 (kịch bản A8: hỏi Sa Pa xong mở trang Bát Tràng, hỏi
