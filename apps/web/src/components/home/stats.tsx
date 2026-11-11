@@ -80,7 +80,7 @@ export function Stats({
 
               <div className="flex flex-col justify-center">
                 <span className="min-w-[200px] font-heading text-4xl text-foreground tabular-nums md:text-5xl">
-                  <CountUp to={12400} />+
+                  <CountUp to={100} />+
                 </span>
                 <span className="mt-4 text-sm tracking-wide text-muted-foreground uppercase">
                   {copy.travelersLabel}
