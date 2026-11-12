@@ -2,6 +2,13 @@
 
 import { homePage, messages } from '@tourism/i18n';
 import { Input } from '@tourism/ui/components/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@tourism/ui/components/select';
 import { Textarea } from '@tourism/ui/components/textarea';
 import { CalendarIcon, ClockIcon, MailIcon, MapPinIcon, PhoneIcon, UserIcon } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -28,8 +35,10 @@ import { SectionEyebrow } from './section-eyebrow';
 // state `ContactFormState` + `validateEnquiry`/`buildEnquiryPayload` dùng
 // CHUNG lib (không khai lại rule), honeypot `website`, toast phân loại
 // success/error/throttle, điền sẵn tên từ session. Khác biệt duy nhất so với
-// /contact: ô "Region" từ text tự do → `<select>` 4 lựa chọn (Anywhere + 3
-// miền) để `interests` mang key vùng chuẩn thay vì chuỗi khách gõ.
+// /contact: ô "Region" từ text tự do → ô chọn 4 lựa chọn (Anywhere + 3 miền)
+// để `interests` mang key vùng chuẩn thay vì chuỗi khách gõ. Ô chọn là `Select`
+// của `@tourism/ui` (12/11) chứ không còn `<select>` gốc: danh sách gốc do trình
+// duyệt vẽ nên lệch hẳn khỏi design system (user chụp màn hình báo).
 // Review #30 (A+B+C): A — nới khung lên max-w-7xl như các section khác, ảnh
 // bỏ kích thước cố định và bám trọn cột phải; B — overlay "Answer times" mỏng
 // thay bằng glass card đáy ảnh chứa 3 hàng liên hệ (email/phone/giờ phản hồi);
@@ -63,11 +72,48 @@ export const BARE_FIELD =
 /** Lỗi inline dưới field — cùng khuôn `LETTER_ERROR` của contact-split. */
 const FIELD_ERROR = 'mt-1.5 text-xs text-destructive-emphasis';
 
+/**
+ * Vỏ có viền của một ô — MỘT nguồn cho wrapper của `ContactField` lẫn trigger ô
+ * Region, để ô chọn trông y hệt ô nhập bên cạnh (viền, nền, góc bo, viền primary
+ * khi focus).
+ */
+const FIELD_SHELL = 'rounded-md border bg-card transition-colors focus-within:border-primary/60';
+
+/**
+ * Trigger ô Region khoác dáng `FIELD_SHELL`. Trigger CHÍNH LÀ cả ô có viền (icon
+ * nằm bên trong) chứ không lồng trong wrapper như Input, vì popup lấy bề rộng và
+ * mép trái của trigger: lồng vào thì danh sách hụt mất phần icon, lệch khỏi mép ô.
+ *
+ * Đè các lớp mặc định của `SelectTrigger` cho khớp ô nhập:
+ * - cao 34px = Input h-8 cộng viền 1px trên dưới của wrapper (đè đúng biến thể
+ *   `data-[size=default]` vì lớp gốc gắn ở đó, không đè thì lớp gốc thắng);
+ * - lề trái 12px + icon 16px + khe 8px — chữ bắt đầu đúng cột chữ của Input;
+ * - focus đổi viền primary như `focus-within` của wrapper, không vẽ ring;
+ * - nền `bg-card` cả hai theme (gốc là `dark:bg-input/30`, lệch nền ô bên cạnh);
+ * - chữ `text-base md:text-sm` như Input (mobile 16px).
+ */
+const REGION_TRIGGER = `${FIELD_SHELL} w-full gap-2 pr-3 pl-3 text-base text-foreground data-[size=default]:h-8.5 md:text-sm dark:bg-card dark:hover:bg-card focus-visible:border-primary/60 focus-visible:ring-0 data-popup-open:border-primary/60`;
+
+/** Bốn lựa chọn của ô Region: `any` đứng đầu (giá trị mặc định), rồi ba miền. */
+const REGION_OPTIONS = [
+  { key: 'any', name: messages.homeContact.regionAny },
+  ...REGIONS.map((region) => ({ key: region.key, name: region.name })),
+];
+
+/** Nhãn hiện trên trigger — `SelectValue` của Base UI in GIÁ TRỊ thô nếu không map. */
+function regionName(value: unknown): string {
+  return (
+    REGION_OPTIONS.find((option) => option.key === value)?.name ?? messages.homeContact.regionAny
+  );
+}
+
 export function ContactField({
   id,
   label,
   icon: Icon,
   multiline = false,
+  bare = false,
+  grow = false,
   error,
   children,
 }: {
@@ -75,12 +121,38 @@ export function ContactField({
   label: string;
   icon?: ComponentType<SVGProps<SVGSVGElement>>;
   multiline?: boolean;
+  /**
+   * Không vẽ vỏ có viền — `children` tự khoác `FIELD_SHELL` (trigger ô Region).
+   * Bỏ qua `icon`: icon khi ấy nằm trong chính `children`.
+   */
+  bare?: boolean;
+  /**
+   * Ô giãn hết chiều cao còn lại của cột form (ô Message, 12/11): cột form ngắn
+   * hơn panel "What happens next" bên phải, ô giãn ra để nút gửi thẳng đáy panel.
+   * Cột form cao hơn panel (hiện lỗi, màn hẹp xếp một cột) thì ô giữ cỡ `rows`.
+   */
+  grow?: boolean;
   /** Lỗi inline dưới ô (nối API 19/08); id `${id}-error` để input trỏ tới. */
   error?: string;
   children: ReactNode;
 }) {
+  if (bare) {
+    return (
+      <div className="flex flex-col">
+        <motion.label
+          htmlFor={id}
+          className="mb-2 text-sm tracking-wide text-muted-foreground uppercase"
+          {...fieldMotion}
+        >
+          {label}
+        </motion.label>
+        <motion.div {...fieldMotion}>{children}</motion.div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col">
+    <div className={`flex flex-col ${grow ? 'grow' : ''}`}>
       <motion.label
         htmlFor={id}
         className="mb-2 text-sm tracking-wide text-muted-foreground uppercase"
@@ -89,15 +161,17 @@ export function ContactField({
         {label}
       </motion.label>
       <motion.div
-        className={`flex rounded-md border bg-card pl-3 transition-colors focus-within:border-primary/60 ${
+        className={`flex ${FIELD_SHELL} pl-3 ${
           multiline ? 'items-start pt-3' : 'items-center'
-        } ${error ? 'border-destructive' : ''}`}
+        } ${grow ? 'grow' : ''} ${error ? 'border-destructive' : ''}`}
         {...fieldMotion}
       >
         {Icon ? (
           <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         ) : null}
-        <div className="min-w-0 flex-1">{children}</div>
+        <div className={`min-w-0 flex-1 ${grow ? 'flex flex-col self-stretch' : ''}`}>
+          {children}
+        </div>
       </motion.div>
       {error ? (
         <p id={`${id}-error`} role="alert" className={FIELD_ERROR}>
@@ -174,7 +248,8 @@ export function Contact() {
   return (
     <section id="contact" className="w-full px-4 py-20 md:px-16 lg:px-24 xl:px-32">
       <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-stretch gap-12 lg:grid-cols-2 lg:gap-16">
-        {/* Cột trái: form */}
+        {/* Cột trái: form. `items-stretch` của grid kéo cột này cao bằng panel bên
+            phải; `grow` ở form và ở ô Message ăn phần dư để đáy nút gửi thẳng đáy panel. */}
         <div className="flex flex-col">
           <SectionEyebrow>{copy.eyebrow}</SectionEyebrow>
           <motion.h2
@@ -189,7 +264,11 @@ export function Contact() {
             {copy.titleRest}
           </motion.h2>
 
-          <form className="relative mt-15 flex flex-col gap-6" onSubmit={handleSubmit} noValidate>
+          <form
+            className="relative mt-15 flex grow flex-col gap-6"
+            onSubmit={handleSubmit}
+            noValidate
+          >
             {/* Honeypot — cùng kỹ thuật contact-split/newsletter: wrapper
                 aria-hidden + tabIndex -1, CSS đẩy khỏi viewport (KHÔNG
                 display:none) để bot đọc DOM thô vẫn tưởng là field thật. */}
@@ -258,26 +337,29 @@ export function Contact() {
                   onChange={(e) => set('dates', e.target.value)}
                 />
               </ContactField>
-              <ContactField
-                id="contact-region"
-                label={messages.homeContact.regionLabel}
-                icon={MapPinIcon}
-              >
-                {/* `<select>` gốc, tạo kiểu như Input trần: cùng chiều cao,
-                    không viền/nền riêng (wrapper lo viền + focus ring). */}
-                <select
-                  id="contact-region"
+              <ContactField id="contact-region" label={messages.homeContact.regionLabel} bare>
+                {/* Trigger là `<button role="combobox">` nên `<label htmlFor>` của
+                    ContactField vẫn đặt tên cho nó. `alignItemWithTrigger={false}`:
+                    danh sách thả XUỐNG dưới ô như ô Sort ở /tours, thay cho kiểu
+                    popup đè lên ô của Select mặc định. */}
+                <Select
                   value={state.region}
-                  onChange={(e) => set('region', e.target.value)}
-                  className={`${BARE_FIELD} h-8 w-full cursor-pointer text-sm text-foreground outline-none`}
+                  onValueChange={(value) =>
+                    set('region', typeof value === 'string' ? value : 'any')
+                  }
                 >
-                  <option value="any">{messages.homeContact.regionAny}</option>
-                  {REGIONS.map((region) => (
-                    <option key={region.key} value={region.key}>
-                      {region.name}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="contact-region" className={REGION_TRIGGER}>
+                    <MapPinIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+                    <SelectValue>{regionName}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    {REGION_OPTIONS.map((option) => (
+                      <SelectItem key={option.key} value={option.key}>
+                        {option.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </ContactField>
             </div>
 
@@ -285,13 +367,14 @@ export function Contact() {
               id="contact-message"
               label={copy.fields.message.label}
               multiline
+              grow
               error={errors.loves}
             >
               <Textarea
                 id="contact-message"
                 rows={4}
                 placeholder={copy.fields.message.placeholder}
-                className={`${BARE_FIELD} resize-none pt-0`}
+                className={`${BARE_FIELD} grow resize-none pt-0`}
                 value={state.loves}
                 onChange={(e) => set('loves', e.target.value)}
                 aria-invalid={Boolean(errors.loves)}

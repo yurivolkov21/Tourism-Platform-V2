@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { REGIONS } from '@/mocks/regions';
 import { Contact } from './contact';
 
 // jsdom KHÔNG có IntersectionObserver mà mọi `motion.*` ở đây dùng
@@ -96,7 +97,10 @@ describe('Home Contact — nối enquiries.create (19/08, cùng khuôn contact-s
 
     await fillValid(user);
     await user.type(screen.getByLabelText('Travel dates'), 'Oct 12 – Oct 18');
-    await user.selectOptions(screen.getByLabelText(messages.homeContact.regionLabel), 'north');
+    // Select của Base UI không phải `<select>` gốc nên `selectOptions` không dùng
+    // được — mở popup rồi bấm đúng mục (cùng cách ToursExplorer — sắp xếp).
+    await user.click(screen.getByRole('combobox', { name: messages.homeContact.regionLabel }));
+    await user.click(await screen.findByRole('option', { name: 'Northern Vietnam' }));
     await user.click(screen.getByRole('button', { name: SUBMIT }));
 
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
@@ -111,6 +115,27 @@ describe('Home Contact — nối enquiries.create (19/08, cùng khuôn contact-s
       description: messages.homeContact.toast.success.body,
     });
     expect((screen.getByLabelText('Your name') as HTMLInputElement).value).toBe('');
+  });
+
+  it('ô Region là Select của design system (12/11): combobox mang tên nhãn, mặc định "Anywhere", chọn xong trigger đổi chữ', async () => {
+    const user = userEvent.setup();
+    render(<Contact />);
+
+    // Không còn `<select>` gốc — danh sách do trình duyệt vẽ lệch design system.
+    expect(document.querySelector('select')).toBeNull();
+    const trigger = screen.getByRole('combobox', { name: messages.homeContact.regionLabel });
+    expect(trigger).toHaveTextContent(messages.homeContact.regionAny);
+
+    await user.click(trigger);
+    // Đủ bốn lựa chọn: Anywhere đứng đầu rồi ba miền.
+    const options = await screen.findAllByRole('option');
+    expect(options.map((o) => o.textContent)).toEqual([
+      messages.homeContact.regionAny,
+      ...REGIONS.map((region) => region.name),
+    ]);
+
+    await user.click(screen.getByRole('option', { name: 'Central Vietnam' }));
+    await waitFor(() => expect(trigger).toHaveTextContent('Central Vietnam'));
   });
 
   it('region "Anywhere" (mặc định) → interests rỗng, KHÔNG gửi "any"', async () => {
