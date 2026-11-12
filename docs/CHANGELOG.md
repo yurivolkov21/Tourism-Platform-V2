@@ -8,6 +8,31 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-11-12 — Merge ô Region của form Contact trang chủ dùng Select của design system (`b2648121`)
+
+Yuri chụp màn hình 12/11: ô REGION ở form Contact cuối trang chủ là `<select>` gốc, danh sách do trình duyệt vẽ nên lệch
+design system; nhờ chỉnh luôn khuôn form nếu kịp, giới hạn 30 phút từ wireframe tới code. Nhánh
+`fix/web-contact-region-select-mtkt06`, [PR #86](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/86), session
+cloud. Không migration, không biến env, không đổi dependency (đúng freeze 31/10), không đụng `libs/shared/*`, API,
+admin hay mobile. Trang `/contact` (form "lá thư", ô vùng là nhóm radio) không đổi.
+
+- `b2648121` (fix web): `apps/web/src/components/home/contact.tsx` thay `<select>` bằng `Select` của `@tourism/ui`, cùng
+  loại với ô Sort ở /tours. Trigger chính là cả ô có viền (icon pin nằm trong) nên danh sách thả xuống rộng đúng bằng ô
+  (`alignItemWithTrigger={false}`); cao 34px, nền `bg-card` và viền focus primary khớp ô nhập bên cạnh ở cả hai theme.
+  `ContactField` thêm prop `bare` và `grow`; vỏ có viền gom về hằng `FIELD_SHELL`. Bố cục: ô Message giãn hết phần dư
+  của cột form để đáy nút gửi thẳng đáy panel "What happens next" (trước lệch khoảng 50px); màn hẹp xếp một cột thì ô
+  giữ cỡ cũ. Dữ liệu gửi đi không đổi (`region` vẫn `any`/`north`/`central`/`south`).
+
+**Review.** Không có lượt review độc lập. Tự kiểm: `contact.spec.tsx` 10/10, thêm test ô Region là combobox mang tên
+nhãn, đủ bốn lựa chọn, chọn xong trigger đổi chữ; Playwright trên `next dev` với API seed ở máy, khung 1600px: đáy nút
+gửi 795.5 bằng đáy panel 795.5, ô Region cao 34 bằng ô Travel dates; xem ảnh nền sáng, nền tối và khung 390px.
+
+**CÒN TREO (sau deploy):** chỉ Vercel deploy lại web. Mở trang chủ trên production, bấm ô Region của form Contact.
+
+Tests after (`gate:int` trong container cloud trên `b2648121`, API sống ở :3001 như bước CI): unit 8830 (web 2520,
+admin 2460, api 1486, mobile 1069, contract 833, mobile-ui 259, ui 65, i18n 63, core 49, tokens 26) và int 985; gate
+28/28 task; Biome 2171 file. PR thêm 1 test ở web.
+
 ## 2026-11-12 — Merge số liệu thật trên Home, About, Contact (`f7c75201`, `f2211bf1`)
 
 Yuri hỏi 12/11: nhiều con số trên Home, Tours, Travel blog, About us, Contact là số giả, không lấy từ DB. Thread rà
