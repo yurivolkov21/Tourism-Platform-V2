@@ -7,6 +7,7 @@ import { CountUp } from '@/components/motion/count-up';
 import { RevealLine } from '@/components/motion/reveal-line';
 import { SlotImage } from '@/components/slot-image';
 import type { SiteMediaItem } from '@/lib/api/site-media';
+import { MEASURED_STATS } from '@/lib/site-stats';
 
 // About §1 (convert 100% lối forged/Hero, da thịt token + bài học #25):
 // hero fullscreen căn TRÁI — badge pill viền accent, heading 3 dòng reveal
@@ -20,12 +21,13 @@ import type { SiteMediaItem } from '@/lib/api/site-media';
 
 const t = aboutPage.hero;
 
-// Số liệu công ty mock (static-first) — sau này một phần lấy từ API catalog
-// như Nexora about-metrics; phần "năm hoạt động" là hằng số brand.
+// "Năm hoạt động" là hằng số cốt truyện thương hiệu (2014 → 2026), không có trong DB. Hai số
+// còn lại từng là 8,000+ khách và 98% "would go again" — bịa; nay là số đo từ DB production
+// (`MEASURED_STATS`, cùng nguồn với khu Stats trang chủ để hai trang không nói hai số khác nhau).
 const HERO_STATS = [
   { value: 12, suffix: '+', label: t.stats.years },
-  { value: 8000, suffix: '+', label: t.stats.travellers },
-  { value: 98, suffix: '%', label: t.stats.wouldGoAgain },
+  { value: MEASURED_STATS.travellersHosted, suffix: '+', label: t.stats.travellers },
+  { value: MEASURED_STATS.satisfactionPercent, suffix: '%', label: t.stats.satisfaction },
 ];
 
 export function AboutHero({ heroImage = null }: { heroImage?: SiteMediaItem | null }) {

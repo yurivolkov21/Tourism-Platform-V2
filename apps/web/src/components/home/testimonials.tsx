@@ -13,13 +13,16 @@ import { SectionEyebrow } from './section-eyebrow';
 // 2 cột chạy ngược chiều (keyframes marquee-up/down trong globals.css, hover
 // thì tạm dừng). Avatar dùng fallback chữ cái thay ảnh người.
 // Review #29: lấp khoảng trống dưới heading bằng "bảng điểm tin cậy" — điểm
-// trung bình TÍNH THẬT từ mock (không hardcode) + hàng sao + avatar chồng lấn.
+// trung bình + hàng sao + avatar chồng lấn. Từ 12/11/2026 điểm và số review lấy
+// từ thẻ tour (`reviewSummary`, page truyền xuống) thay vì tính trên 8 card mock
+// (in 4.9 trong khi 106 review thật trung bình 4.3). Tám card trong marquee VẪN
+// là chữ biên tập ở `mocks/testimonials` — API chưa có đường nào trả review của
+// nhiều tour một lúc.
 // Giữ nguyên bố cục + marquee dọc (đã phân tích: không xoay ngang theo
 // prompt2app vì trang đã có 2 marquee ngang, dọc là điểm nhấn riêng).
 const col1 = TESTIMONIALS.slice(0, 4);
 const col2 = TESTIMONIALS.slice(4, 8);
 
-const AVERAGE_RATING = TESTIMONIALS.reduce((acc, t) => acc + t.rating, 0) / TESTIMONIALS.length;
 const AVATAR_PREVIEW = TESTIMONIALS.slice(0, 5);
 
 const copy = homePage.testimonials;
@@ -60,7 +63,14 @@ function TestimonialCard({ item }: { item: MockTestimonial }) {
   );
 }
 
-export function Testimonials() {
+export function Testimonials({
+  reviews,
+}: {
+  /** Tổng review đã duyệt và điểm trung bình toàn catalogue; `null` khi tải tour lỗi. */
+  reviews: { count: number; average: number | null } | null;
+}) {
+  // Không có số thật (tải lỗi, hay chưa ai đánh giá) thì ẨN dòng điểm, không rơi về số bịa.
+  const average = reviews?.average ?? null;
   return (
     <section
       id="reviews"
@@ -98,34 +108,38 @@ export function Testimonials() {
             viewport={{ once: true }}
             transition={{ ...SPRING, delay: 0.3 }}
           >
-            <div className="flex items-end gap-3">
-              <span className="font-heading text-5xl leading-none font-medium text-foreground">
-                {AVERAGE_RATING.toFixed(1)}
-              </span>
-              <div className="flex flex-col gap-1.5 pb-0.5">
-                <div
-                  role="img"
-                  // `Number(toFixed(1))`: hàm chung nhận số, làm tròn y như số hiển thị bên
-                  // cạnh (4.875 → 4.9) nên câu đọc ra trùng bản cũ.
-                  aria-label={ratingLabel(Number(AVERAGE_RATING.toFixed(1)))}
-                  className="flex items-center gap-1"
-                >
-                  {Array.from({ length: 5 }, (_, i) => (
-                    <StarIcon
-                      // biome-ignore lint/suspicious/noArrayIndexKey: dãy sao tĩnh 5 phần tử, không reorder
-                      key={i}
-                      aria-hidden="true"
-                      className={
-                        i < Math.round(AVERAGE_RATING)
-                          ? 'size-3.5! fill-rating text-rating'
-                          : 'size-3.5! text-rating-muted'
-                      }
-                    />
-                  ))}
+            {reviews !== null && average !== null ? (
+              <div className="flex items-end gap-3">
+                <span className="font-heading text-5xl leading-none font-medium text-foreground">
+                  {average.toFixed(1)}
+                </span>
+                <div className="flex flex-col gap-1.5 pb-0.5">
+                  <div
+                    role="img"
+                    // `average` đã làm tròn 1 chữ số ở `reviewSummary`, nên câu đọc ra trùng số
+                    // hiển thị bên cạnh.
+                    aria-label={ratingLabel(average)}
+                    className="flex items-center gap-1"
+                  >
+                    {Array.from({ length: 5 }, (_, i) => (
+                      <StarIcon
+                        // biome-ignore lint/suspicious/noArrayIndexKey: dãy sao tĩnh 5 phần tử, không reorder
+                        key={i}
+                        aria-hidden="true"
+                        className={
+                          i < Math.round(average)
+                            ? 'size-3.5! fill-rating text-rating'
+                            : 'size-3.5! text-rating-muted'
+                        }
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {copy.ratingSource(reviews.count)}
+                  </span>
                 </div>
-                <span className="text-xs text-muted-foreground">{copy.ratingSource}</span>
               </div>
-            </div>
+            ) : null}
 
             <div className="flex items-center">
               {AVATAR_PREVIEW.map((t, i) => (

@@ -13,6 +13,7 @@ import { settle } from '@/lib/api/resilience';
 import { siteMediaImage, siteMediaImages } from '@/lib/api/site-media';
 import { fetchDestinations, fetchTours } from '@/lib/api/tours';
 import { topDestinations } from '@/lib/regions';
+import { reviewSummary } from '@/lib/site-stats';
 import { MOMENTS } from '@/mocks/moments';
 import { REGIONS } from '@/mocks/regions';
 
@@ -77,7 +78,8 @@ export default async function HomePage() {
         failed={!destinationsRes.ok}
       />
       <WhyChooseUs images={whyImages} />
-      <Testimonials />
+      {/* Điểm và số review cộng từ chính `toursRes` (không thêm lượt gọi API nào). */}
+      <Testimonials reviews={toursRes.ok ? reviewSummary(toursRes.data) : null} />
       {/* Journal trắng chen giữa Testimonials (muted) và CTA (tối) — nhịp nền
           sáng/tối xen kẽ (review #33) */}
       <Journal posts={postsRes.data ?? []} failed={!postsRes.ok} />

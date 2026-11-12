@@ -8,6 +8,7 @@ import { CountUp } from '@/components/motion/count-up';
 import { TopoPattern } from '@/components/topo-pattern';
 import type { DestinationVM, TourCardVM } from '@/lib/api/tours';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
+import { MEASURED_STATS, reviewSummary } from '@/lib/site-stats';
 
 // About §4 By the numbers (convert 100% lối forged/Stats, da thịt token):
 // beat TỐI của trang (scope dark cố định như CTA/footer) — chữ nền "NUMBERS"
@@ -15,14 +16,16 @@ import { SPRING, SPRING_HEADING } from '@/lib/motion';
 // "tourism" cuối trang), lưới 6 ô hairline (gap-px trên nền border), hover ô
 // sáng nhẹ + số phóng 1.05 từ mép trái, vào so le 0.1s. Counter dùng CountUp
 // spring nhà thay AnimatedCounter rAF của template.
-// Bộ 6 số ĐÀO SÂU VẬN HÀNH — cố ý không lặp 12+/8,000+/98% của hero §1.
+// Bộ 6 số ĐÀO SÂU VẬN HÀNH — cố ý không lặp ba số của hero §1.
 // Task 5 (cụm destinations-api): "Tours running" + "Destinations" giờ nhận
 // `tours` + `destinations` qua PROP (page fetch `settle(fetchTours())` +
 // `settle(fetchDestinations())`, đúng khuôn Task 4/9) thay vì đếm mock —
-// component KHÔNG tự fetch (client, có motion, ADR-0016 §4). Destinations:
-// số THẬT từ destinations.list (19: 7 Bắc / 5 Trung / 7 Nam), vá số bịa 9 sót
-// từ mock (review T5). 4 số còn lại (guides/departures/km/scripts) CHƯA có
-// endpoint nguồn — vẫn là số biên tập cố định, cố ý giữ hardcode.
+// component KHÔNG tự fetch (client, có motion, ADR-0016 §4).
+// Đợt 12/11/2026 (rà số liệu giả trước bảo vệ): "Local guides" 27 và
+// "Kilometres each season" 45,000+ không có dữ liệu nào đứng sau nên thay bằng
+// số review và điểm trung bình, cộng sống từ chính `tours` (`reviewSummary`);
+// "Departures a year" 560+ sai với DB (273 chuyến năm 2026) nên đổi sang số đo
+// `MEASURED_STATS`. Còn đúng một số cố định: "Scripts" 0 — câu tu từ, không đếm.
 
 const t = aboutPage.numbers;
 
@@ -39,15 +42,20 @@ export function AboutNumbers({
   // north-to-south-classic) chạm cả ba vùng, cộng dồn sẽ đếm nó nhiều lần.
   // Đây là `tours.length` phẳng, không qua toursInRegion() nào cả.
   const totalTours = tours.length;
+  const reviews = reviewSummary(tours);
 
   // Nhãn và mô tả từng ô (`label`, `description`) trải ra từ `aboutPage.numbers.stats`.
+  // Chưa có review nào thì `average` null → BỎ ô điểm (lưới còn 5 ô) chứ không in 0 hay một
+  // điểm bịa; với catalogue hiện tại nhánh này không xảy ra.
   const STATS = [
-    { value: totalTours, suffix: '', ...t.stats.toursRunning },
-    { value: 27, suffix: '', ...t.stats.localGuides },
-    { value: destinations.length, suffix: '', ...t.stats.destinations },
-    { value: 560, suffix: '+', ...t.stats.departures },
-    { value: 45000, suffix: '+', ...t.stats.kilometres },
-    { value: 0, suffix: '', ...t.stats.scripts },
+    { value: totalTours, decimals: 0, suffix: '', ...t.stats.toursRunning },
+    { value: reviews.count, decimals: 0, suffix: '', ...t.stats.reviews },
+    { value: destinations.length, decimals: 0, suffix: '', ...t.stats.destinations },
+    { value: MEASURED_STATS.departuresThisYear, decimals: 0, suffix: '+', ...t.stats.departures },
+    ...(reviews.average === null
+      ? []
+      : [{ value: reviews.average, decimals: 1, suffix: '', ...t.stats.averageRating }]),
+    { value: 0, decimals: 0, suffix: '', ...t.stats.scripts },
   ];
 
   return (
@@ -113,7 +121,7 @@ export function AboutNumbers({
                 transition={{ ...SPRING, delay: index * 0.1 }}
               >
                 <span className="mb-2 block origin-left font-heading text-5xl leading-none font-semibold text-primary-emphasis transition-transform duration-300 group-hover:scale-105">
-                  <CountUp to={stat.value} />
+                  <CountUp to={stat.value} decimals={stat.decimals} />
                   {stat.suffix}
                 </span>
                 <p className="mb-1 text-sm font-semibold tracking-wide uppercase">{stat.label}</p>

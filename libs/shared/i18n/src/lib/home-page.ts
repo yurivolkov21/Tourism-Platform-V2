@@ -98,8 +98,11 @@ export const homePage = {
     eyebrow: 'Reviews',
     title: 'Trusted by travelers. Proven by stories.',
     body: 'Honest words from people who trusted us with their time off.',
-    ratingSource: 'from 100+ travellers',
-    avatarsMore: 'and thousands more',
+    /** Dòng dưới điểm trung bình; `count` là tổng review đã duyệt cộng từ thẻ tour (đếm sống). */
+    ratingSource: (count: number) =>
+      `from ${count.toLocaleString('en-US')} verified ${count === 1 ? 'review' : 'reviews'}`,
+    /** Cạnh dãy avatar. Bản cũ "and thousands more" sai với DB (106 review, 12/11/2026). */
+    avatarsMore: 'Read them all on each tour',
   },
   journal: {
     eyebrow: 'Journal',

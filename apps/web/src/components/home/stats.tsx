@@ -5,6 +5,7 @@ import { homePage } from '@tourism/i18n';
 import { motion } from 'motion/react';
 import { CountUp } from '@/components/motion/count-up';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
+import { MEASURED_STATS } from '@/lib/site-stats';
 import { SectionEyebrow } from './section-eyebrow';
 import { StatsSlider } from './stats-slider';
 
@@ -60,8 +61,8 @@ export function Stats({
             <div className="mt-16 flex w-full justify-between max-lg:flex-col max-lg:gap-10 md:mt-20">
               {/* Quyết định user 01/08 (vụ thứ 3 lớp Destinations-9): số tour phải
                   có nguồn API thật, KHÔNG hardcode "68+" nữa — 68 là số bịa. Suffix
-                  là số TRẦN "30", không dấu "+", vì đây là con số CHÍNH XÁC (khác
-                  các ô editorial 12,400+/98% bên dưới, vẫn là số tròn/ước lượng).
+                  là số TRẦN, không dấu "+", vì đây là con số CHÍNH XÁC (khác hai ô
+                  bên dưới: số đo từ DB làm tròn xuống, nên mang "+"/"%").
                   `toursCount` null khi fetch lỗi → ẨN HẲN ô này, cấm rơi về 68 cũ. */}
               {toursCount !== null ? (
                 <>
@@ -78,9 +79,13 @@ export function Stats({
                 </>
               ) : null}
 
+              {/* Hai ô dưới từng là 12,400+ khách và 98% — số bịa (đo DB 12/11/2026:
+                  1,312 khách đã đi xong chuyến, 88.7% review 4★ trở lên). Chưa có
+                  endpoint công khai nào đếm hai số này nên dùng số đo `MEASURED_STATS`,
+                  chung nguồn với hero trang About. */}
               <div className="flex flex-col justify-center">
                 <span className="min-w-[200px] font-heading text-4xl text-foreground tabular-nums md:text-5xl">
-                  <CountUp to={100} />+
+                  <CountUp to={MEASURED_STATS.travellersHosted} />+
                 </span>
                 <span className="mt-4 text-sm tracking-wide text-muted-foreground uppercase">
                   {copy.travelersLabel}
@@ -91,7 +96,7 @@ export function Stats({
 
               <div className="flex flex-col justify-center">
                 <span className="min-w-[94px] font-heading text-4xl text-foreground tabular-nums md:text-5xl">
-                  <CountUp to={98} />%
+                  <CountUp to={MEASURED_STATS.satisfactionPercent} />%
                 </span>
                 <span className="mt-4 text-sm tracking-wide text-muted-foreground uppercase">
                   {copy.satisfactionLabel}

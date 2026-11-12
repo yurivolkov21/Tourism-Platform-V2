@@ -10,6 +10,8 @@ interface CountUpProps {
   duration?: number;
   className?: string;
   separator?: string;
+  /** Số chữ số thập phân in ra (mặc định 0). Điểm đánh giá "4.3" cần 1. */
+  decimals?: number;
 }
 
 // Convert từ template Estate (components/count-number.tsx) sang chuẩn dự án:
@@ -21,6 +23,7 @@ export function CountUp({
   duration = 2,
   className = '',
   separator = ',',
+  decimals = 0,
 }: CountUpProps) {
   const ref = useRef<HTMLSpanElement>(null);
   const motionValue = useMotionValue(from);
@@ -48,14 +51,17 @@ export function CountUp({
   useEffect(() => {
     return springValue.on('change', (latest) => {
       if (ref.current) {
+        // `decimals` 0 giữ đúng hành vi cũ (làm tròn về số nguyên); lớn hơn 0 thì Intl tự làm
+        // tròn, và min = max để "4.0" không rút thành "4" giữa chừng spring.
         const formatted = Intl.NumberFormat('en-US', {
           useGrouping: !!separator,
-          maximumFractionDigits: 0,
-        }).format(Math.round(latest));
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals,
+        }).format(decimals === 0 ? Math.round(latest) : latest);
         ref.current.textContent = separator ? formatted.replace(/,/g, separator) : formatted;
       }
     });
-  }, [springValue, separator]);
+  }, [springValue, separator, decimals]);
 
   return <span ref={ref} className={className} />;
 }

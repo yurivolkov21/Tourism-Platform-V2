@@ -22,11 +22,12 @@ export const aboutPage = {
       'Nexora began as three guides and one minivan in Sa Pa. Today we run small-group journeys across all three regions — still no scripts, still no rush.',
     browseTours: 'Browse tours',
     meetTeam: 'Meet the team',
-    // Nhãn của hàng 3 số dưới nút; số và hậu tố (+, %) ở lại component.
+    // Nhãn của hàng 3 số dưới nút; số và hậu tố (+, %) ở lại component. Ô thứ ba từng là
+    // "Would go again" 98% — DB không có dữ liệu nào như vậy; nay là tỉ lệ review 4★ trở lên.
     stats: {
       years: 'Years on the road',
       travellers: 'Travellers hosted',
-      wouldGoAgain: 'Would go again',
+      satisfaction: 'Traveller satisfaction',
     },
   },
   // §2 Story — `about-story.tsx`.
@@ -44,7 +45,7 @@ export const aboutPage = {
       origin:
         'Nexora started in 2014 with a simple bet: the person who grew up on a path shows it better than any brochure. Three guides, one borrowed minivan, and the misty terraces of the north.',
       today:
-        'Eleven years later we are still small on purpose — small groups, three regions, and guides who set the pace of their own valleys. Growth, for us, means deeper roads, not more of them.',
+        'Twelve years later we are still small on purpose — small groups, three regions, and guides who set the pace of their own valleys. Growth, for us, means deeper roads, not more of them.',
     },
     pills: {
       localGuides: 'Local guides only',
@@ -109,13 +110,15 @@ export const aboutPage = {
     eyebrow: 'Key metrics',
     titleLead: 'Numbers we’re proud of,',
     titleAccent: 'counted the slow way.',
-    // Nhãn và dòng mô tả của 6 ô; con số (đếm thật hoặc số biên tập) ở lại component.
+    // Nhãn và dòng mô tả của 6 ô; con số ở lại component. Đợt 12/11/2026 thay hai ô không có
+    // dữ liệu nào đứng sau ("Local guides" 27, "Kilometres each season" 45,000+) bằng hai số
+    // đếm sống từ thẻ tour (số review, điểm trung bình).
     stats: {
       toursRunning: { label: 'Tours running', description: 'Across all three regions' },
-      localGuides: { label: 'Local guides', description: 'Every one born on their route' },
+      reviews: { label: 'Verified reviews', description: 'Only from travellers who booked' },
       destinations: { label: 'Destinations', description: 'From the far north to the islands' },
-      departures: { label: 'Departures a year', description: 'Rain or shine, small groups' },
-      kilometres: { label: 'Kilometres each season', description: 'By road, rail and river' },
+      departures: { label: 'Departures in 2026', description: 'Rain or shine, small groups' },
+      averageRating: { label: 'Average rating', description: 'Out of 5, across every tour' },
       scripts: { label: 'Scripts', description: 'And none planned' },
     },
   },
