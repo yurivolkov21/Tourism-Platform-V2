@@ -1,12 +1,12 @@
 # Việc còn treo
 
-> Bản tóm tắt để điều hướng, cập nhật 09/11/2026. **Chỉ giữ việc còn mở**; mục đã
+> Bản tóm tắt để điều hướng, cập nhật 12/11/2026. **Chỉ giữ việc còn mở**; mục đã
 > đóng (gồm các mã G đã gạch) nằm ở [open-items-closed.md](open-items-closed.md),
 > chép nguyên văn. **Không phải nguồn sự thật** — chi tiết của từng mục sống ở
 > [CHANGELOG](CHANGELOG.md) (mục "CÒN TREO" của entry tương ứng) và ở
 > [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thuat.md).
 > **Đóng một mục:** ghi kết quả vào dòng (ngày, nhánh, commit), chuyển cả dòng
-> sang open-items-closed.md, rồi ghi vào CHANGELOG. **Mã G kế tiếp: G61.**
+> sang open-items-closed.md, rồi ghi vào CHANGELOG. **Mã G kế tiếp: G62.**
 >
 > Các mã như G41, F2 hay P5b-3 là mã nội bộ đặt trong lúc làm dự án; bảng giải
 > nghĩa ở [thuật ngữ](glossary.md#mã-nội-bộ-trong-tài-liệu). Link tới `plans/` và
@@ -175,3 +175,4 @@ deploy) nằm ở [sổ nợ kỹ thuật](analysis/2026-08-06-backlog-no-ky-thu
 | G58 | App mobile chưa biết hai mã mới của `DELETE /api/account` ([ADR-0052 AMEND 2](adr/0052-admin-staff-tier.md)): Owner hay Staff bấm xoá ở Personal details thì API chặn đúng (403 `ACCOUNT_IS_OWNER` hoặc `ACCOUNT_IS_STAFF`, tài khoản còn nguyên) nhưng app in câu lỗi chung thay vì câu của web. Cách sửa: hai `case` trong `apps/mobile/src/features/account/delete-account-flow.ts` trỏ `messages.accountProfile.danger.errors.ownerAccount` và `.staffAccount` (câu web đang dùng), kèm test; muốn giống web hơn thì ẩn nút xoá theo role. Vùng của Nghĩa, cần APK mới. Mở 27/10 lúc merge PR #73 |
 | G59 | Hình logo "Slidex" (`apps/web/src/components/logo.tsx`, `apps/admin/src/components/logo.tsx`, favicon sinh từ đó, mark trong email, `apps/mobile/assets/splash-mark.png`) và hai hiệu ứng `apps/web/src/components/home/stats-slider.tsx`, `apps/web/src/components/motion/tilt-card.tsx` lấy từ mẫu miễn phí của PrebuiltUI. Điều khoản PrebuiltUI không cho phát hành lại mẫu, nên [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) ghi là không cấp quyền dùng lại theo MIT. Muốn hết rủi ro thì vẽ logo riêng và viết lại hai hiệu ứng; đổi logo đụng web, admin, email và app (cần APK mới), nên hợp lý nhất là sau buổi bảo vệ, Yuri quyết. Mở 27/10 lúc merge PR #74 |
 | G60 | Ba lượt `fetch` thẳng tới API trong `apps/web/src/lib/api/account.ts` (`/api/account/me`, `/api/auth/list-accounts`, `DELETE /api/account`) chưa có hạn chờ như `session.ts` ([ADR-0044 AMEND 3](adr/0044-prerender-retry-transient-api.md)). Thường không tới được vì `requireSession` chạy trước và đã có hạn 30 giây, nhưng API trả phiên rồi mới treo thì trang `/account` vẫn chờ tới trần 300 giây của Vercel (suy luận theo cơ chế 08/11, chưa đo). Cùng ngày 08/11 Vercel ghi `HeadersTimeout` trên `/login` và `/contact`, hai trang chỉ gọi API qua client oRPC (có hạn 20 giây); nguồn chưa xác định. Mở 09/11 lúc merge PR #83 |
+| G61 | Ba số trên web là số đo tay, không đếm sống: `MEASURED_STATS` ở `apps/web/src/lib/site-stats.ts` (1,300+ khách đã đi xong chuyến, 270+ chuyến khởi hành năm 2026, 88% review 4–5 sao; đo trên DB production 12/11). Seed lại production hay sau buổi bảo vệ thì đo lại theo định nghĩa SQL trong comment, hoặc thêm endpoint thống kê công khai (Yuri chọn 12/11 chưa làm). Cùng đợt còn hai thứ chưa có dữ liệu thật đứng sau: 8 card review mẫu ở trang chủ (`mocks/testimonials.ts`; API chưa có đường trả review của nhiều tour, cột `is_featured` của `reviews` chưa dùng) và dải tên báo chí "featured by…" (`homePage.partners`). Mở 12/11 lúc merge PR #85 |

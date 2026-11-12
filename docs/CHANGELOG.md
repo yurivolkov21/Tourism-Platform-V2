@@ -8,6 +8,44 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-11-12 — Merge số liệu thật trên Home, About, Contact (`f7c75201`, `f2211bf1`)
+
+Yuri hỏi 12/11: nhiều con số trên Home, Tours, Travel blog, About us, Contact là số giả, không lấy từ DB. Thread rà
+mọi con số cứng trên năm trang và dải chữ đầu trang, đối chiếu DB production bằng SQL chỉ-đọc (12/11 khoảng 01:35 UTC,
+không ghi gì). Phần lớn số trên Home và About là bịa; có chỗ ghi thấp hơn thật. Nhánh `fix/web-real-numbers-455wf5`,
+[PR #85](https://github.com/yurivolkov21/Tourism-Platform-V2/pull/85), session cloud. Thay luôn hai lần sửa tay trên
+main 11–12/11 (`f0c8cee5` CountUp 12400 thành 100, `40dd31c1` "2,400+" thành "100+"). Không migration, không biến env,
+không đổi dependency (đúng freeze 31/10), không đụng API, contract hay mobile. Sửa `libs/shared/i18n` (chữ của
+`homePage`, `aboutPage`, `contactPage`, `messages.topBar`); admin chỉ đọc `homePage.whyChooseUs` và
+`aboutPage.timeline`, không đổi.
+
+- `f7c75201` (fix web): `apps/web/src/lib/site-stats.ts` mới. `reviewSummary` cộng `ratingAvg`/`ratingCount` của thẻ
+  tour (trung bình có trọng số, làm tròn 1 chữ số), không thêm lượt gọi API: khối Reviews trang chủ in điểm 4.3 và
+  "from 106 verified reviews" (trước 4.9 tính trên 8 card mẫu, "from 100+ travellers", "and thousands more"); lưới
+  Numbers của About có hai ô sống mới, "Verified reviews" và "Average rating", thay "Local guides" 27 và "Kilometres
+  each season" 45,000+ (không có dữ liệu nào). Ba số chưa có endpoint công khai thành `MEASURED_STATS`, đo trên DB
+  rồi làm tròn xuống: 1,300+ khách đã đi xong chuyến (đo 1,312; Home từng ghi 100+, About 8,000+), 270+ chuyến khởi
+  hành năm 2026 (đo 273; About từng ghi 560+ "a year"), 88% review 4–5 sao (đo 88.7%; từng ghi 98%, About gọi là
+  "Would go again"). Định nghĩa SQL từng số ghi trong comment. Story About sửa "Eleven years later" thành "Twelve
+  years later" cho khớp 2014–2026. `CountUp` thêm prop `decimals` (mặc định 0, hành vi cũ giữ nguyên).
+- `f2211bf1` (fix i18n): dải chữ đầu trang bỏ "Autumn sale — 20% off selected Ha Long departures this week" (không đợt
+  Hạ Long nào giảm giá) và "New route: Mekong Delta Boats" (không có tour này); Contact bỏ "average answer: 47 minutes".
+- Giữ nguyên có chủ đích: số tour và số điểm đến (đã sống từ API), mọi số ở /tours và /blog, "12+ years since 2014"
+  cùng các mốc timeline (cốt truyện thương hiệu), "Scripts 0". Yuri chọn 12/11 giữ số đo, không thêm endpoint thống
+  kê công khai (còn khoảng 4 ngày tới bảo vệ, dữ liệu production chốt không seed lại).
+- Docs: `open-items.md` mở G61.
+
+**Review.** Không có lượt review độc lập. Tự kiểm: `site-stats.spec.ts` (7 test) và nhánh không có review của
+`about-numbers.spec.tsx`; `next start` bản build trên DB seed ở máy đọc ra Home 29, 1,300+, 88% và About 12+, 1,300+,
+88%, lưới 29, 105, 18, 270+, 4.3, 0 (seed máy có 105 review, production 106).
+
+**CÒN TREO (sau deploy):** chỉ Vercel deploy lại web. Mở trang chủ và /about trên production, xem khối Reviews in 4.3
+và "from 106 verified reviews". Seed lại production thì đo lại `MEASURED_STATS` (G61).
+
+Tests after (`gate:int` trong container cloud trên `f2211bf1`, API sống ở :3001 như bước CI): unit 8829 (web 2519,
+admin 2460, api 1486, mobile 1069, contract 833, mobile-ui 259, ui 65, i18n 63, core 49, tokens 26) và int 985; gate
+28/28 task; Biome 2171 file. PR thêm 8 test ở web.
+
 ## 2026-11-11 — Merge prompt trợ lý chat nói rõ hỗ trợ tiếng Anh và tiếng Việt (`d375c786`)
 
 Yuri thử trên production 11/11: sau một đoạn chat bằng tiếng Anh, hỏi "bạn nói tiếng việt được không" thì Nexora
