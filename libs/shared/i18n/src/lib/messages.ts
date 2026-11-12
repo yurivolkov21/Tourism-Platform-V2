@@ -1096,10 +1096,14 @@ export const messages = {
   topBar: {
     marquee: [
       'Vietnam’s slow-travel journeys, crafted end to end by locals',
-      'Autumn sale — 20% off selected Ha Long departures this week',
+      // Hai câu dưới sửa 12/11/2026: bản cũ hứa "20% off selected Ha Long departures this
+      // week" (không đợt Hạ Long nào giảm giá) và "New route: Mekong Delta Boats" (không có tour
+      // nào tên vậy; tour Mekong hai ngày có từ đầu catalogue). Câu giảm giá cố ý không ghi số:
+      // giá đợt do admin sửa, một con số ở đây sẽ trôi khỏi giá thật.
+      'Seasonal deals on selected departures — look for the struck-through price',
       'Small groups, always led by local guides',
       'Free cancellation on every tour',
-      'New route: Mekong Delta Boats — two days on the river',
+      'Two days on the Mekong, with the Cái Răng floating market',
     ],
   },
   // Tên đọc của các nút mạng xã hội ở top bar và footer — W-09 (14/10).

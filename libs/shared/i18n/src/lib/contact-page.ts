@@ -17,7 +17,8 @@ export const contactPage = {
     titleLead: 'Talk to a human,',
     titleAccent: 'not a hotline.',
     intro: 'Tell us your dates and pace — a real person replies within the hour, Monday to Friday.',
-    presence: 'Mai is on replies today — average answer: 47 minutes',
+    // Bản cũ kèm "average answer: 47 minutes" — con số bịa, không đo từ đâu (12/11/2026).
+    presence: 'Mai is on replies today',
   },
   /** §2 card chia đôi (`contact-split.tsx`): panel ảnh bên trái, "lá thư" bên phải. */
   split: {
