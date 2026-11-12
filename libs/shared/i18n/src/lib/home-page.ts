@@ -98,7 +98,7 @@ export const homePage = {
     eyebrow: 'Reviews',
     title: 'Trusted by travelers. Proven by stories.',
     body: 'Honest words from people who trusted us with their time off.',
-    ratingSource: 'from 2,400+ travellers',
+    ratingSource: 'from 100+ travellers',
     avatarsMore: 'and thousands more',
   },
   journal: {
